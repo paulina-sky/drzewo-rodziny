@@ -53,12 +53,11 @@ header.top h1{font-size:19px;flex:1;white-space:nowrap;overflow:hidden;text-over
 .pane.on{display:block}
 main{padding-bottom:84px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
-nav.tabs button{flex:1;min-height:64px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;color:var(--muted);font-weight:600;position:relative}
-nav.tabs button svg{width:26px;height:26px}
+nav.tabs button{flex:1;min-height:56px;font-size:15px!important;flex-direction:row!important;flex-wrap:wrap;padding:4px 6px;line-height:1.2;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;color:var(--muted);font-weight:600;position:relative}
 nav.tabs button[aria-current=page]{color:var(--accent)}
 nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;left:20%;right:20%;height:3px;background:var(--accent);border-radius:0 0 3px 3px}
 .count{background:var(--danger);color:#fff;border-radius:999px;font-size:12px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
-nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
+nav.tabs .count{margin-left:6px}
 
 .desk-only{display:none!important}
 @media (min-width:1000px){
@@ -101,23 +100,23 @@ nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 .hero .actions.one{grid-template-columns:1fr}
 .avbtn{border:0;background:none;padding:0;cursor:pointer;position:relative;display:inline-block;border-radius:50%}
 .avbtn:hover .av{box-shadow:0 0 0 3px var(--accent)}
-.avedit{position:absolute;right:2px;bottom:12px;width:42px;height:42px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.avedit{position:absolute;left:50%;transform:translateX(-50%);bottom:4px;padding:4px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:14px;font-weight:650;color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .crop{position:relative;width:min(100%,320px);aspect-ratio:1;max-width:100%;margin:0 auto;overflow:hidden;border-radius:16px;background:#2a2f3a;touch-action:none;cursor:grab;user-select:none}
 .crop img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;pointer-events:none}
 .crop::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 999px rgba(20,24,32,.55);border:2px solid rgba(255,255,255,.85);pointer-events:none}
-.zoomrow{display:flex;align-items:center;gap:12px;max-width:320px;margin:14px auto 0}
-.zoomrow input{flex:1;min-width:0;accent-color:var(--accent);height:32px}
-.btn.sq{width:52px;flex:0 0 52px;padding:0;font-size:24px}
+.zoomrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;max-width:320px;margin:14px auto 0}
+.zoomrow .btn{flex:1 1 40%}
+.zoomrow input{order:3;flex:1 1 100%;min-width:0;accent-color:var(--accent);height:32px}
 .badge{display:inline-flex;align-items:center;gap:6px;background:var(--pend-bg);color:var(--pend);border:1px solid var(--pend-line);border-radius:999px;padding:3px 10px;font-size:14px;font-weight:650;margin-top:8px}
 .badge.del{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
 .pitem{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;max-width:280px}
 .pitem .mini{max-width:none}
 .uchip{min-height:40px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;color:var(--ink);cursor:pointer;text-align:left;line-height:1.3}
 .uchip:hover{border-color:var(--accent)}
+.uedit{color:var(--accent);font-weight:650;margin-left:4px}
 .uchip.pend{background:var(--pend-bg);border:2px dashed var(--pend-line)}
 .ugrid .choice{flex:1 1 45%}
 .legend .lg{display:inline-block;width:22px;border-top:2.5px solid #5c5548;vertical-align:middle;margin-right:4px}
-.legend .lg.dash{border-top-style:dashed}
 .legend .lg.dot{border-top:2.5px dotted #9a948a}
 .dup{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
 .dup .mini{border:0;padding-left:0;min-height:0;cursor:default}
@@ -148,7 +147,7 @@ dl.facts .pend{background:var(--pend-bg)}
 .treebox.drag{cursor:grabbing}
 .zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:5}
 .treewrap{position:relative;height:100%}
-.zoom button{align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:26px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.zoom button{align-items:center;justify-content:center;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:15px;font-weight:650;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .legend{position:absolute;left:12px;bottom:12px;z-index:5;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:14px;display:none;gap:12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
 svg.tree{transform-origin:0 0}
 svg.tree text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -163,7 +162,7 @@ svg.tree .card:focus rect.bg{stroke:#1d6fd8;stroke-width:3}
 @media (min-width:700px){.sheet-bg{align-items:center}.sheet{border-radius:20px;max-height:90vh}}
 .sheet>header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card)}
 .sheet>header h2{flex:1;font-size:20px}
-.sheet>header button{min-width:48px;min-height:48px;border:0;background:var(--soft);border-radius:12px;font-size:22px;cursor:pointer}
+.sheet>header button{min-height:48px;padding:0 16px;border:0;background:var(--soft);border-radius:12px;font-size:15px;font-weight:650;cursor:pointer}
 .sheet .body{padding:16px;overflow:auto;flex:1}
 .sheet .foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);display:flex;gap:10px}
 .sheet .foot .btn{flex:1}
@@ -264,8 +263,6 @@ details.more summary{cursor:pointer;color:var(--muted);min-height:44px;display:f
 .pane.tree.enter{animation:fadeIn .25s ease-out}
 .btn,.mini,.uchip,.iconbtn,.relpick button,.choice span,.check,nav.tabs button,.zoom button,.avbtn{transition:transform .14s var(--ease),background-color .18s,border-color .18s,box-shadow .18s,color .18s}
 .btn:active,.mini:active,.uchip:active,.iconbtn:active,.relpick button:active,.choice span:active,.check:active,.zoom button:active,.avbtn:active{transform:scale(.96)}
-nav.tabs button:active svg{transform:scale(.9)}
-nav.tabs button svg{transition:transform .14s var(--ease)}
 .mini:hover,.relpick button:hover{box-shadow:0 4px 14px rgba(29,36,51,.10);transform:translateY(-1px)}
 nav.tabs button[aria-current=page]::before{animation:grow .3s var(--ease)}
 .badge{animation:breathe 2.6s ease-in-out infinite}
@@ -359,9 +356,10 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');
 
-const USTATUS = {married:['💍','Małżeństwo'], partner:['🤝','Związek partnerski'], divorced:['💔','Rozwód'], separated:['💔','Rozstanie']};
-const ustatus = u => ({'':'married', rozstanie:'separated'})[u.status ?? ''] || u.status;
-const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu / rozstania'};
+// znak w drzewie, nazwa
+const USTATUS = {married:['❤️','Małżeństwo'], partner:['🩷','Związek'], divorced:['❌','Rozwód']};
+const ustatus = u => ({'':'married', rozstanie:'divorced', separated:'divorced'})[u.status ?? ''] || u.status;
+const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu'};
 const FIELDS = {first:'Imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
 const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
 const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
@@ -547,14 +545,14 @@ function avatar(p, size){
 }
 function partnerWord(w, id, u){
   const g = w.people[id]?.gender === 'M' ? 1 : 0;
-  return {married:['Żona','Mąż'], partner:['Partnerka','Partner'], divorced:['Była żona','Były mąż'], separated:['Była partnerka','Były partner']}[ustatus(u)][g];
+  return {married:['Żona','Mąż'], partner:['Partnerka','Partner'], divorced:['Była żona','Były mąż']}[ustatus(u)][g];
 }
-// np. „💍 Małżeństwo · ślub 1968 (do śmierci męża)” – z perspektywy osoby `me`
+// np. „Małżeństwo · ślub 1968 (do śmierci męża)” – z perspektywy osoby `me`
 function unionLabel(w, u, me){
   const st = ustatus(u), other = w.people[u.partners.find(x => x !== me)];
-  let s = USTATUS[st][0] + ' ' + USTATUS[st][1];
-  if (u.wedDate && (st === 'married' || st === 'divorced')) s += ' · ślub ' + u.wedDate;
-  if (u.endDate && (st === 'divorced' || st === 'separated')) s += ' · ' + (st === 'divorced' ? 'rozwód ' : 'rozstanie ') + u.endDate;
+  let s = USTATUS[st][1];
+  if (u.wedDate && st !== 'partner') s += ' · ślub ' + u.wedDate;
+  if (u.endDate && st === 'divorced') s += ' · rozwód ' + u.endDate;
   if (st === 'married' && other?.dead) s += other.gender === 'M' ? ' (do śmierci męża)' : other.gender === 'K' ? ' (do śmierci żony)' : ' (do śmierci partnera)';
   return s;
 }
@@ -567,7 +565,7 @@ function miniCard(w, id, extra=''){
   const pend = w.flags.add.has(id) || w.flags.fields[id] || w.flags.del.has(id);
   return `<button class="mini${w.flags.add.has(id)?' pending':''}" data-go="${id}">
     ${avatar(p,'s')}<span><span class="nm">${esc(shortName(p))}</span><br>
-    <span class="yr">${esc(years(p) || extra || ' ')}</span>${pend?'<br><span class="pchip">⏳ czeka na zatwierdzenie</span>':''}</span></button>`;
+    <span class="yr">${esc(years(p) || extra || ' ')}</span>${pend?'<br><span class="pchip">czeka na zatwierdzenie</span>':''}</span></button>`;
 }
 function timeAgo(ts){
   const m = Math.round((Date.now()-ts)/60000);
@@ -596,10 +594,10 @@ function render(){
   if (S.view === 'inbox' && !isAdmin()) S.view = 'person';
   app.innerHTML = `
   <header class="top">
-    <h1>🌳 Drzewo rodziny</h1>
-    <button class="iconbtn" data-act="search" aria-label="Szukaj osoby">${ICON.search}<span>Szukaj</span></button>
+    <h1>Drzewo rodziny</h1>
+    <button class="iconbtn" data-act="search">Szukaj</button>
     ${isAdmin() ? `<button class="iconbtn desk-only" data-act="inbox">Zmiany ${n?`<span class="count">${n}</span>`:''}</button>` : ''}
-    <button class="iconbtn" data-act="menu" aria-label="Więcej">⋯</button>
+    <button class="iconbtn" data-act="menu">Więcej</button>
   </header>
   <main class="layout">
     <section class="pane tree ${S.view==='tree'?'on':''}" aria-label="Całe drzewo">${treeHTML()}</section>
@@ -609,9 +607,9 @@ function render(){
     </section>
   </main>
   <nav class="tabs" aria-label="Główne">
-    <button data-view="person" ${S.view==='person'?'aria-current="page"':''}>${ICON.person}Osoba</button>
-    <button data-view="tree" ${S.view==='tree'?'aria-current="page"':''}>${ICON.tree}Całe drzewo</button>
-    ${isAdmin() ? `<button data-view="inbox" ${S.view==='inbox'?'aria-current="page"':''}>${ICON.inbox}Do zatwierdzenia${n?`<span class="count">${n}</span>`:''}</button>` : ''}
+    <button data-view="person" ${S.view==='person'?'aria-current="page"':''}>Osoba</button>
+    <button data-view="tree" ${S.view==='tree'?'aria-current="page"':''}>Całe drzewo</button>
+    ${isAdmin() ? `<button data-view="inbox" ${S.view==='inbox'?'aria-current="page"':''}>Do zatwierdzenia${n?`<span class="count">${n}</span>`:''}</button>` : ''}
   </nav>`;
   const hdr = document.querySelector('header.top').offsetHeight;
   document.documentElement.style.setProperty('--hdr', hdr + 'px');
@@ -627,13 +625,6 @@ function render(){
   lastNav = nav;
 }
 
-const ICON = {
-  search:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
-  person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
-  tree:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 7v4M5 16v-3h14v3"/></svg>',
-  inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l1 8v6H4v-6z"/></svg>',
-};
-
 /* ---------- widok osoby ---------- */
 function personHTML(id){
   const w = W, p = w.people[id];
@@ -642,7 +633,7 @@ function personHTML(id){
   const parents = parentsOf(w,id), partners = partnersOf(w,id), kids = childrenOf(w,id), sibs = siblingsOf(w,id);
   const unknown = !p.first && !p.last && !p.maiden;
   const sub = [p.nick && '„'+p.nick+'”', years(p)].filter(Boolean).join('  ·  ');
-  const f = (k, v) => v ? `<div class="${pf.has(k)?'pend':''}"><dt>${FIELDS[k]}</dt><dd>${esc(v)}${pf.has(k)?' <span class="pchip">⏳</span>':''}</dd></div>` : '';
+  const f = (k, v) => v ? `<div class="${pf.has(k)?'pend':''}"><dt>${FIELDS[k]}</dt><dd>${esc(v)}${pf.has(k)?' <span class="pchip">(czeka)</span>':''}</dd></div>` : '';
   const health = (p.health||[]).map(h => `<span class="chip">${esc(HEALTH[h])}</span>`).join('');
   const facts = [
     f('born', p.born), f('bornPlace', p.bornPlace),
@@ -654,38 +645,38 @@ function personHTML(id){
     <div class="section" style="margin-top:4px">
       <h2>Rodzice</h2>
       <div class="strip">${parents.map(x => miniCard(w,x,relWord(w,x,'parent'))).join('')}
-        ${parents.length < 2 ? `<button class="mini add" data-add="parent" aria-label="Dodaj rodzica">＋ Dodaj</button>` : ''}</div>
+        ${parents.length < 2 ? `<button class="mini add" data-add="parent" aria-label="Dodaj rodzica">Dodaj</button>` : ''}</div>
     </div>
     <article class="hero ${isAddPend?'pending':''}" aria-labelledby="pname">
-      ${p.photo ? `<button class="avbtn" data-act="photoedit" aria-label="Zmień lub wykadruj zdjęcie">${avatar(p,'l')}<span class="avedit" aria-hidden="true">✏️</span></button>` : avatar(p,'l')}
+      ${p.photo ? `<button class="avbtn" data-act="photoedit" aria-label="Zmień lub wykadruj zdjęcie">${avatar(p,'l')}<span class="avedit" aria-hidden="true">Zmień</span></button>` : avatar(p,'l')}
       <h1 id="pname">${esc(fullName(p))}</h1>
       ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}
-      ${isAddPend ? `<div class="badge">⏳ Nowa osoba – czeka na zatwierdzenie</div>` : ''}
-      ${!isAddPend && pf.size ? `<div class="badge">⏳ Twoje zmiany czekają na zatwierdzenie</div>` : ''}
-      ${isDelPend ? `<div class="badge del">⏳ Zgłoszono do usunięcia</div>` : ''}
+      ${isAddPend ? `<div class="badge">Nowa osoba – czeka na zatwierdzenie</div>` : ''}
+      ${!isAddPend && pf.size ? `<div class="badge">Twoje zmiany czekają na zatwierdzenie</div>` : ''}
+      ${isDelPend ? `<div class="badge del">Zgłoszono do usunięcia</div>` : ''}
       <div class="actions ${p.photo?'one':''}">
-        <button class="btn primary" data-act="edit">✏️ Edytuj dane</button>
-        ${p.photo ? '' : `<label class="btn">📷 Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-act="photo"></label>`}
+        <button class="btn primary" data-act="edit">Edytuj dane</button>
+        ${p.photo ? '' : `<label class="btn">Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-act="photo"></label>`}
       </div>
     </article>
     ${unknown ? `<div class="hint">Nie znamy jeszcze danych tej osoby. <b>Wiesz coś?</b> Kliknij „Edytuj dane”.</div>` : ''}
     <div class="section"><h2>${partners.length > 1 ? 'Partnerzy' : 'Partner / partnerka'}</h2>
       <div class="strip">${partners.map(x => `<div class="pitem">${miniCard(w, x.id, partnerWord(w, x.id, x.union))}
-        <button class="uchip${w.flags.unions.has(x.union.id) ? ' pend' : ''}" data-union="${x.union.id}" aria-label="Rodzaj związku: ${esc(unionLabel(w, x.union, id))}. Zmień">${esc(unionLabel(w, x.union, id))}${w.flags.unions.has(x.union.id) ? ' ⏳' : ''} <span aria-hidden="true">✏️</span></button></div>`).join('')}
-      <button class="mini add" data-add="partner" aria-label="Dodaj partnera lub partnerkę">＋ Dodaj</button></div></div>
+        <button class="uchip${w.flags.unions.has(x.union.id) ? ' pend' : ''}" data-union="${x.union.id}" aria-label="Rodzaj związku: ${esc(unionLabel(w, x.union, id))}. Zmień">${esc(unionLabel(w, x.union, id))}${w.flags.unions.has(x.union.id) ? ' · czeka' : ''} <span class="uedit">Zmień</span></button></div>`).join('')}
+      <button class="mini add" data-add="partner" aria-label="Dodaj partnera lub partnerkę">Dodaj</button></div></div>
     <div class="section"><h2>Dzieci</h2>
       <div class="strip">${kids.map(x => miniCard(w,x,relWord(w,x,'child'))).join('')}
-      <button class="mini add" data-add="child" aria-label="Dodaj dziecko">＋ Dodaj</button></div></div>
+      <button class="mini add" data-add="child" aria-label="Dodaj dziecko">Dodaj</button></div></div>
     <div class="section"><h2>Rodzeństwo</h2>
       <div class="strip">${sibs.map(x => miniCard(w,x,relWord(w,x,'sibling'))).join('')}
-      <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">＋ Dodaj</button></div></div>
+      <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">Dodaj</button></div></div>
     ${facts ? `<div class="section"><h2>Informacje</h2><dl class="facts">${facts}</dl></div>` : ''}
     ${hasHealth ? `<div class="section"><h2>Zdrowie</h2><dl class="facts">
         ${health ? `<div class="${pf.has('health')?'pend':''}"><dt>Choroby</dt><dd><span class="chips">${health}</span></dd></div>` : ''}
         ${f('cancerType', p.cancerType)}${f('healthNotes', p.healthNotes)}</dl></div>` : ''}
-    <div class="section"><h2>Notatka ${pf.has('note')?'<span class="pchip">⏳ czeka na zatwierdzenie</span>':''}</h2>
+    <div class="section"><h2>Notatka ${pf.has('note')?'<span class="pchip">czeka na zatwierdzenie</span>':''}</h2>
       <div class="note ${p.note?'':'empty'} ${pf.has('note')?'pend':''}">${p.note ? esc(p.note) : 'Brak notatki. Znasz jakąś historię? Zapisz ją!'}</div>
-      <div style="margin-top:10px"><button class="btn block" data-act="note">📝 ${p.note ? 'Edytuj notatkę' : 'Dodaj notatkę'}</button></div>
+      <div style="margin-top:10px"><button class="btn block" data-act="note">${p.note ? 'Edytuj notatkę' : 'Dodaj notatkę'}</button></div>
     </div>
   </div>`;
 }
@@ -921,18 +912,18 @@ function treeHTML(){
     const cy = id => P[id].y + 46, cx = id => P[id].x + CW/2;
     if (ps.length === 2) {
       const [a,b] = ps.map(cx).sort((m,n) => m-n), y = cy(ps[0]);
-      const st = ustatus(u), div = st === 'divorced' || st === 'separated';
-      const stroke = div ? '#9a948a' : '#5c5548', dash = div ? 'stroke-dasharray="3 6"' : st === 'partner' ? 'stroke-dasharray="8 6"' : '';
+      const st = ustatus(u), div = st === 'divorced', mark = USTATUS[st][0];
+      const stroke = div ? '#9a948a' : '#5c5548', dash = div ? 'stroke-dasharray="3 6"' : '';
       if (b - a > CW + GAP + 1) {
         // partner nie stoi obok (np. trzeci związek): łuk nad kartami, by nie nakładał się na inne linie
         const top = P[ps[0]].y - 12 - (bracketN[P[ps[0]].y] = (bracketN[P[ps[0]].y] || 0) + 1) * 8;
         lines += `<path d="M${a} ${P[ps[0]].y} V${top} H${b} V${P[ps[0]].y}" fill="none" stroke="${stroke}" stroke-width="2.5" ${dash}/>`;
         ax = (a+b)/2; ay = top;
-        marks += `<text x="${ax}" y="${top+7}" text-anchor="middle" font-size="18" aria-hidden="true">${div?'💔':'❤️'}</text>`;
+        marks += `<text x="${ax}" y="${top+7}" text-anchor="middle" font-size="16" aria-hidden="true">${mark}</text>`;
       } else {
         lines += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="${stroke}" stroke-width="2.5" ${dash}/>`;
         ax = (a+b)/2; ay = y;
-        marks += `<text x="${ax}" y="${y+7}" text-anchor="middle" font-size="20" aria-hidden="true">${div?'💔':'❤️'}</text>`;
+        marks += `<text x="${ax}" y="${y+7}" text-anchor="middle" font-size="${div ? 15 : 20}" aria-hidden="true">${mark}</text>`;
       }
     } else if (ps.length === 1) { ax = cx(ps[0]); ay = P[ps[0]].y + CH; }
     if (!ks.length) return;
@@ -964,8 +955,8 @@ function treeHTML(){
   const z = S.zoom;
   return `<div class="treewrap"><div class="treebox" tabindex="0" aria-label="Całe drzewo. Przesuń palcem, a dwoma palcami powiększ lub pomniejsz.">
     <svg class="tree" width="${L.width*z}" height="${L.height*z}" viewBox="0 0 ${L.width} ${L.height}" role="group">${lines}${marks}${cards}</svg></div>
-    <div class="legend"><span><i class="lg"></i>❤️ małżeństwo</span><span><i class="lg dash"></i>❤️ związek partnerski</span><span><i class="lg dot"></i>💔 rozwód / rozstanie</span><span>⏳ czeka na zatwierdzenie</span></div>
-    <div class="zoom"><button class="desk-only" data-zoom="1" aria-label="Powiększ">＋</button><button class="desk-only" data-zoom="-1" aria-label="Pomniejsz">－</button><button data-zoom="0" aria-label="Pokaż wybraną osobę" style="font-size:20px">◎</button></div></div>`;
+    <div class="legend"><span><i class="lg"></i>❤️ małżeństwo</span><span><i class="lg"></i>🩷 związek</span><span><i class="lg dot"></i>❌ rozwód</span><span>⏳ czeka na zatwierdzenie</span></div>
+    <div class="zoom"><button class="desk-only" data-zoom="1">Powiększ</button><button class="desk-only" data-zoom="-1">Pomniejsz</button><button data-zoom="0">Wybrana osoba</button></div></div>`;
 }
 function setupTree(prev){
   const box = document.querySelector('.treebox'); if (!box) return;
@@ -1127,12 +1118,12 @@ function fmt(k, v){
   if (k === 'health') return (v||[]).map(h => HEALTH[h]).join(', ') || '—';
   if (k === 'gender') return GENDER[v||''];
   if (k === 'dead') return v ? 'Tak' : 'Nie';
-  if (k === 'status') return USTATUS[ustatus({status:v})].join(' ');
+  if (k === 'status') return USTATUS[ustatus({status:v})][1];
   return v || '—';
 }
 function dupWarn(person, selfId, V){
   const d = Object.values(V.people).filter(q => q.id !== selfId && sameName(person, q));
-  return d.length ? `<div class="conflict">⚠️ Możliwy duplikat – w drzewie jest już: ${d.map(q => `<b>${esc(shortName(q))}</b> (${esc(whoIs(V, q.id))})`).join(', ')}. Jeśli to ta sama osoba, odrzuć tę zmianę albo po zatwierdzeniu użyj „Połącz z…”.</div>` : '';
+  return d.length ? `<div class="conflict"><b>Możliwy duplikat</b> – w drzewie jest już: ${d.map(q => `<b>${esc(shortName(q))}</b> (${esc(whoIs(V, q.id))})`).join(', ')}. Jeśli to ta sama osoba, odrzuć tę zmianę albo po zatwierdzeniu użyj „Połącz z…”.</div>` : '';
 }
 function inboxHTML(){
   const A = build(false), V = build(true);
@@ -1144,7 +1135,7 @@ function inboxHTML(){
       body = Object.entries(c.fields).filter(([k]) => k !== 'photoOrig').map(([k,v]) => {
         const old = A.people[c.pid]?.[k];
         const others = DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'edit' && o.pid === c.pid && k in o.fields);
-        const conflict = others.length ? `<div class="conflict">⚠️ Inna propozycja dla tego pola: ${others.map(o => `<b>${esc(fmt(k,o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
+        const conflict = others.length ? `<div class="conflict">Inna propozycja dla tego pola: ${others.map(o => `<b>${esc(fmt(k,o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
         if (k === 'photo') return `<div class="diff"><div class="lbl">Zdjęcie</div><div class="imgcmp">${old?`<span class="av s" style="width:72px;height:72px"><img src="${ph(old)}" alt="Obecne zdjęcie"></span> →`:''}<span class="av s" style="width:96px;height:96px"><img src="${ph(v)}" alt="Nowe zdjęcie"></span></div>${conflict}</div>`;
         if (k === 'note') return `<div class="diff"><div class="lbl">Notatka</div>
           <div class="was"><b>Obecnie:</b> ${old ? esc(old) : '<i>brak</i>'}</div>
@@ -1161,7 +1152,7 @@ function inboxHTML(){
         + (c.person.photo ? `<div class="diff"><div class="lbl">Zdjęcie</div><span class="av s" style="width:80px;height:80px"><img src="${ph(c.person.photo)}" alt=""></span></div>` : '')
         + (c.rel.kids?.length ? `<div class="diff"><div class="lbl">Dzieci tej pary</div>${c.rel.kids.map(k => esc(shortName(V.people[k]))).join(', ')}</div>` : '')
         + dupWarn(c.person, c.newId, V)
-        + (pr.length ? `<div class="conflict">🔗 Ta osoba jest dodana do kogoś, kto też czeka na zatwierdzenie (${pr.map(a => esc(shortName(a.person))).join(', ')}). Zatwierdzenie zatwierdzi oba.</div>` : '');
+        + (pr.length ? `<div class="conflict">Ta osoba jest dodana do kogoś, kto też czeka na zatwierdzenie (${pr.map(a => esc(shortName(a.person))).join(', ')}). Zatwierdzenie zatwierdzi oba.</div>` : '');
     } else if (c.kind === 'link') {
       body = `<div class="diff">Osoba, która <b>już jest w drzewie</b> (${esc(whoIs(A, c.pid) || 'bez powiązań')}), zostanie połączona jako <b>${REL[c.rel.type]}</b> osoby ${esc(shortName(V.people[c.rel.of]))}.
         ${c.rel.type === 'child' || c.rel.type === 'sibling' ? 'Jeśli miała innych rodziców, zostaną zastąpieni.' : ''}</div>`;
@@ -1170,7 +1161,7 @@ function inboxHTML(){
       body = Object.entries(c.fields).map(([k, v]) => {
         const old = k === 'status' ? ustatus(u) : u[k];
         const others = DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'union' && o.uid === c.uid && k in o.fields);
-        const conflict = others.length ? `<div class="conflict">⚠️ Inna propozycja: ${others.map(o => `<b>${esc(fmt(k, o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
+        const conflict = others.length ? `<div class="conflict">Inna propozycja: ${others.map(o => `<b>${esc(fmt(k, o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
         return `<div class="diff"><div class="lbl">${UFIELDS[k]}</div><div class="was">Było: <s>${esc(fmt(k, old))}</s></div>
           ${k === 'status' ? `<div><b>${esc(fmt(k, v))}</b></div>` : `<input type="text" data-k="${k}" value="${esc(v)}" aria-label="${UFIELDS[k]} po zmianie">`}${conflict}</div>`;
       }).join('');
@@ -1178,15 +1169,15 @@ function inboxHTML(){
       body = `<div class="conflict" style="background:var(--danger-soft);border-color:var(--danger)">Ktoś prosi o usunięcie tej osoby z drzewa. Powód: ${esc(c.reason || 'nie podano')}</div>`;
     }
     return `<article class="chg" data-chg="${c.id}"><h3>${describe(c, V)}</h3><div class="meta">od: ${esc(c.author)} · ${timeAgo(c.ts)}</div>${body}
-      <div class="row" style="margin-top:12px"><button class="btn primary" data-approve="${c.id}">✓ Zatwierdź</button><button class="btn danger" data-reject="${c.id}">✕ Odrzuć</button></div></article>`;
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-approve="${c.id}">Zatwierdź</button><button class="btn danger" data-reject="${c.id}">Odrzuć</button></div></article>`;
   }).join('');
   return `<div class="wrap">
     <h2 style="font-size:22px;margin:6px 0 4px">Do zatwierdzenia</h2>
     <p style="color:var(--muted);margin:0 0 14px">Możesz poprawić propozycję przed zatwierdzeniem. Odrzucone zmiany po prostu znikają.</p>
-    ${pend.length > 1 ? `<button class="btn primary block" data-act="approveall" style="margin-bottom:14px">✓ Zatwierdź wszystkie (${pend.length})</button>` : ''}
-    ${cards || `<div class="empty-state">🎉 Nic nie czeka na zatwierdzenie.<br></div>`}
+    ${pend.length > 1 ? `<button class="btn primary block" data-act="approveall" style="margin-bottom:14px">Zatwierdź wszystkie (${pend.length})</button>` : ''}
+    ${cards || `<div class="empty-state">Nic nie czeka na zatwierdzenie.</div>`}
     <div class="section"><h2>Ostatnio zatwierdzone</h2>
-      ${hist.length ? hist.map(c => `<div class="hist"><div>${describe(c, V) || ''}<br><small>od: ${esc(c.author)} · ${timeAgo(c.ts)}</small></div><button class="btn sm ghost" data-undo="${c.id}">↶ Cofnij</button></div>`).join('') : '<p style="color:var(--muted)">Jeszcze nic.</p>'}
+      ${hist.length ? hist.map(c => `<div class="hist"><div>${describe(c, V) || ''}<br><small>od: ${esc(c.author)} · ${timeAgo(c.ts)}</small></div><button class="btn sm ghost" data-undo="${c.id}">Cofnij</button></div>`).join('') : '<p style="color:var(--muted)">Jeszcze nic.</p>'}
     </div></div>`;
 }
 
@@ -1196,7 +1187,7 @@ function openSheet(title, bodyHTML, footHTML, onMount){
   document.querySelector('.toast')?.remove();
   const bg = document.createElement('div');
   bg.className = 'sheet-bg';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button data-close aria-label="Zamknij">✕</button></header><form class="body" novalidate>${bodyHTML}</form>${footHTML ? `<div class="foot">${footHTML}</div>` : ''}</div>`;
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button data-close>Zamknij</button></header><form class="body" novalidate>${bodyHTML}</form>${footHTML ? `<div class="foot">${footHTML}</div>` : ''}</div>`;
   const prevFocus = document.activeElement;
   let closed = false;
   const close = () => {
@@ -1260,10 +1251,10 @@ function diffFields(p, o){
 
 function editPerson(){
   const id = S.focus, p = W.people[id];
-  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">＋ Dodaj krewnego</button>` + personForm(p, true) + `
+  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + `
     <details class="more"><summary>Więcej opcji</summary>
       ${isAdmin() ? `<p style="color:var(--muted)">Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
-      <button type="button" class="btn block" data-mergeperson style="margin-bottom:14px">🔗 Połącz z inną osobą…</button>` : ''}
+      <button type="button" class="btn block" data-mergeperson style="margin-bottom:14px">Połącz z inną osobą…</button>` : ''}
       <p style="color:var(--muted)">Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
       <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button></details>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zmiany</button>`,
@@ -1333,7 +1324,7 @@ function addForm(type, union){
   const np = Object.assign(blank(), {last});
   let photo = '', photoOrig = '';
   openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') + kidsField(of) : '') + `
-    <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">📷 Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
+    <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Dodaj do drzewa</button>`,
     (el, close) => {
       wireForm(el);
@@ -1368,7 +1359,7 @@ function addForm(type, union){
 }
 function statusField(st){
   return `<div class="field"><span class="lbl" id="us-l">Jaki to związek?</span><div class="choices ugrid" role="radiogroup" aria-labelledby="us-l">${Object.entries(USTATUS).map(([k, [e, l]]) =>
-    `<label class="choice"><input type="radio" name="ustatus" value="${k}" ${st === k ? 'checked' : ''}><span>${e} ${l}</span></label>`).join('')}</div></div>`;
+    `<label class="choice"><input type="radio" name="ustatus" value="${k}" ${st === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div></div>`;
 }
 function kidsField(of){
   const lone = childrenOf(W, of).filter(k => { const u = parentUnion(W, k); return u && u.partners.length === 1 && u.partners[0] === of; });
@@ -1466,10 +1457,9 @@ function editUnion(uid){
       const f = el.querySelector('form');
       const sync = () => {
         const s = f.querySelector('[name=ustatus]:checked')?.value;
-        f.querySelector('[data-wed]').hidden = !(s === 'married' || s === 'divorced');
-        f.querySelector('[data-end]').hidden = !(s === 'divorced' || s === 'separated');
+        f.querySelector('[data-wed]').hidden = s === 'partner';
+        f.querySelector('[data-end]').hidden = s !== 'divorced';
         f.querySelector('[data-none]').hidden = s !== 'partner';
-        f.querySelector('label[for=f-endDate]').textContent = s === 'separated' ? 'Data rozstania' : 'Data rozwodu';
       };
       f.addEventListener('change', sync); sync();
       el.querySelector('[data-save]').onclick = () => {
@@ -1483,7 +1473,7 @@ function editUnion(uid){
       };
     });
 }
-const txtU = (k, v, ph) => `<div class="field"><label for="f-${k}">${UFIELDS[k] === UFIELDS.endDate ? 'Data rozwodu' : UFIELDS[k]}</label><input type="text" id="f-${k}" value="${esc(v || '')}" placeholder="${esc(ph)}" autocomplete="off"></div>`;
+const txtU = (k, v, ph) => `<div class="field"><label for="f-${k}">${UFIELDS[k]}</label><input type="text" id="f-${k}" value="${esc(v || '')}" placeholder="${esc(ph)}" autocomplete="off"></div>`;
 function ask(msg, okLabel){
   return new Promise(resolve => {
     let done = false;
@@ -1498,12 +1488,12 @@ function ask(msg, okLabel){
 function photoEditor(src, onSave){
   let orig = src;
   openSheet('Zdjęcie', `
-    <p style="margin-top:0">Przesuń zdjęcie palcem, żeby twarz była w kółku. Powiększ przyciskami ＋ i －.</p>
+    <p style="margin-top:0">Przesuń zdjęcie palcem, żeby twarz była w kółku. Możesz też powiększyć lub pomniejszyć przyciskami pod zdjęciem.</p>
     <div class="crop" data-crop aria-label="Podgląd kadru"><img alt=""></div>
-    <div class="zoomrow"><button type="button" class="btn ghost sq" data-z="-1" aria-label="Pomniejsz">－</button>
+    <div class="zoomrow"><button type="button" class="btn ghost" data-z="-1">Pomniejsz</button>
       <input type="range" id="f-zoom" min="1" max="4" step="0.01" value="1" aria-label="Powiększenie">
-      <button type="button" class="btn ghost sq" data-z="1" aria-label="Powiększ">＋</button></div>
-    <label class="btn ghost block" style="margin-top:16px">🖼️ Wybierz inne zdjęcie<input type="file" accept="image/*" class="sr" data-new></label>`,
+      <button type="button" class="btn ghost" data-z="1">Powiększ</button></div>
+    <label class="btn ghost block" style="margin-top:16px">Wybierz inne zdjęcie<input type="file" accept="image/*" class="sr" data-new></label>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zdjęcie</button>`,
     (el, close) => {
       const box = el.querySelector('[data-crop]'), img = box.querySelector('img'), range = el.querySelector('#f-zoom');
@@ -1589,10 +1579,10 @@ function openSearch(){
 }
 function openMenu(){
   openSheet('Więcej', `<div class="listpick">
-    <button type="button" class="btn ghost block" data-m="me">🏠 Wróć do: ${esc(shortName(W.people[START]))}</button>
-    <button type="button" class="btn ghost block" data-m="name">✍️ Zmień swoje imię${S.author?` (teraz: ${esc(S.author)})`:''}</button>
-    <button type="button" class="btn ghost block" data-m="reload">🔄 Odśwież drzewo</button>
-    <button type="button" class="btn ghost block" data-m="lock">🔒 Wyloguj się na tym urządzeniu</button></div>`, '',
+    <button type="button" class="btn ghost block" data-m="me">Wróć do: ${esc(shortName(W.people[START]))}</button>
+    <button type="button" class="btn ghost block" data-m="name">Zmień swoje imię${S.author?` (teraz: ${esc(S.author)})`:''}</button>
+    <button type="button" class="btn ghost block" data-m="reload">Odśwież drzewo</button>
+    <button type="button" class="btn ghost block" data-m="lock">Wyloguj się na tym urządzeniu</button></div>`, '',
     (el, close) => el.querySelectorAll('[data-m]').forEach(b => b.onclick = async () => {
       close();
       const m = b.dataset.m;
@@ -1617,7 +1607,7 @@ const leave = el => new Promise(res => { if (!el || reduceMotion()) return res()
 function toast(msg, undoFn){
   document.querySelector('.toast')?.remove(); clearTimeout(toastT);
   const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status');
-  t.innerHTML = `<span>${esc(msg)}</span>${undoFn ? '<button>↶ Cofnij</button>' : ''}`;
+  t.innerHTML = `<span>${esc(msg)}</span>${undoFn ? '<button>Cofnij</button>' : ''}`;
   const hide = () => { t.classList.add('out'); setTimeout(() => t.remove(), 200); };
   if (undoFn) t.querySelector('button').onclick = () => { hide(); undoFn(); };
   document.body.appendChild(t);
@@ -1677,7 +1667,6 @@ app.addEventListener('change', async e => {
 /* ---------- ekran hasła ---------- */
 function renderGate(msg){
   app.innerHTML = `<div class="gate"><div class="box">
-    <div style="font-size:54px" aria-hidden="true">🌳</div>
     <h1>Drzewo naszej rodziny</h1>
     <p>Wpisz hasło, które dostałeś(-aś) razem z linkiem.</p>
     <form><div class="field"><label for="pw">Hasło rodzinne</label><input type="password" id="pw" autocomplete="current-password"></div>
@@ -1701,7 +1690,7 @@ function renderGate(msg){
 
 async function start(){
   if (!S.pw) return renderGate();
-  app.innerHTML = `<div class="gate"><div class="box"><div style="font-size:54px" aria-hidden="true"><span class="bob">🌳</span></div><h1>Wczytuję drzewo…</h1></div></div>`;
+  app.innerHTML = `<div class="gate"><div class="box"><h1>Wczytuję drzewo…</h1></div></div>`;
   try { await refresh(); render(); }
   catch(e) {
     if (e.message === 'bad_password') { S.pw = ''; save(); return renderGate('Hasło się zmieniło. Wpisz nowe hasło.'); }
