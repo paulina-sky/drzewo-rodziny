@@ -119,6 +119,12 @@ nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 .legend .lg{display:inline-block;width:22px;border-top:2.5px solid #5c5548;vertical-align:middle;margin-right:4px}
 .legend .lg.dash{border-top-style:dashed}
 .legend .lg.dot{border-top:2.5px dotted #9a948a}
+.dup{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+.dup .mini{border:0;padding-left:0;min-height:0;cursor:default}
+.dup .mini[data-pick]{cursor:pointer}
+.dupwho{margin:0;color:var(--muted);font-size:15px}
+.mergepair{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mergepair .mini{flex:1 1 140px;cursor:default}
 .hint{background:var(--accent-soft);border-radius:var(--r);padding:12px 14px;margin-top:14px}
 .pchip{font-size:13px;color:var(--pend);font-weight:650;white-space:nowrap}
 
@@ -364,25 +370,51 @@ const blank = () => ({first:'',last:'',maiden:'',nick:'',gender:'',born:'',bornP
 
 /* ---------- budowanie drzewa z danych + zmian ---------- */
 function build(withPending){
-  const w = {people:{}, unions:clone(DATA.base.unions), flags:{add:new Set(), fields:{}, del:new Set(), unions:new Set()}};
+  const w = {people:{}, unions:clone(DATA.base.unions), alias:{}, flags:{add:new Set(), fields:{}, del:new Set(), unions:new Set()}};
   for (const [id,p] of Object.entries(DATA.base.people)) w.people[id] = Object.assign(blank(), clone(p));
   DATA.changes.filter(c => c.status==='approved').sort((a,b) => a.aseq-b.aseq).forEach(c => apply(w,c,false));
   if (withPending) DATA.changes.filter(c => c.status==='pending').sort((a,b) => a.ts-b.ts).forEach(c => apply(w,c,true));
+  fixGens(w);
   return w;
 }
+// Pokolenia wynikają z powiązań: partnerzy w tym samym, dzieci o jedno niżej (ważne po łączeniu osób).
+function fixGens(w){
+  const G = id => w.people[id].gen;
+  for (let it = 0; it < 60; it++) {
+    let ch = false;
+    const set = (id, g) => { if (G(id) !== g) { w.people[id].gen = g; ch = true; } };
+    w.unions.forEach(u => {
+      const ps = u.partners.filter(x => w.people[x]), ks = u.children.filter(x => w.people[x]);
+      if (!ps.length) { if (ks.length) { const g = Math.max(...ks.map(G)); ks.forEach(x => set(x, g)); } return; }
+      const g = Math.max(...ps.map(G), ...ks.map(x => G(x) - 1));
+      ps.forEach(x => set(x, g)); ks.forEach(x => set(x, g + 1));
+    });
+    if (!ch) break;
+  }
+}
+const cleanUnions = w => { w.unions = w.unions.filter(u => u.partners.length + u.children.length >= 2); };
+// Przy dodaniu partnera: wskazane dzieci osoby `of` (dotąd tylko z jednym rodzicem) stają się dziećmi pary.
+function adoptKids(w, u, ofId, kids){
+  (kids || []).forEach(k => {
+    const old = w.unions.find(x => x.children.includes(k));
+    if (old && old !== u && old.partners.length === 1 && old.partners[0] === ofId) { old.children = old.children.filter(x => x !== k); u.children.push(k); }
+  });
+}
 function apply(w, c, pending){
-  const P = w.people;
+  const P = w.people, A = id => w.alias[id] || id;
   if (c.kind === 'edit') {
-    const p = P[c.pid]; if (!p) return;
+    const p = P[A(c.pid)]; if (!p) return;
     Object.assign(p, clone(c.fields));
-    if (pending) { const s = w.flags.fields[c.pid] ||= new Set(); Object.keys(c.fields).forEach(k => s.add(k)); }
+    if (pending) { const s = w.flags.fields[p.id] ||= new Set(); Object.keys(c.fields).forEach(k => s.add(k)); }
   } else if (c.kind === 'add') {
-    const of = P[c.rel.of]; if (!of) return;
+    const of = P[A(c.rel.of)]; if (!of) return;
     const np = Object.assign(blank(), clone(c.person), {id:c.newId});
     const U = w.unions, t = c.rel.type, nu = 'u_'+c.id;
     const keyOf = id => P[id] ? P[id].key : of.key;
     if (t === 'partner') {
-      U.push({id:nu, partners:[of.id, np.id], children:[], status:c.rel.ustatus || 'married'}); np.gen = of.gen; np.key = of.key + 1;
+      const u = {id:nu, partners:[of.id, np.id], children:[], status:c.rel.ustatus || 'married'};
+      U.push(u); np.gen = of.gen; np.key = of.key + 1;
+      adoptKids(w, u, of.id, c.rel.kids); cleanUnions(w);
     } else if (t === 'child') {
       let u = c.rel.union && U.find(x => x.id === c.rel.union);
       if (!u) { u = {id:nu, partners:[of.id], children:[]}; U.push(u); }
@@ -403,16 +435,61 @@ function apply(w, c, pending){
     }
     P[np.id] = np;
     if (pending) w.flags.add.add(np.id);
+  } else if (c.kind === 'link') {
+    // istniejąca osoba połączona z kimś jako dziecko / rodzic / partner / rodzeństwo (zamiast dodawać duplikat)
+    const p = P[A(c.pid)], of = P[A(c.rel.of)]; if (!p || !of || p === of) return;
+    Object.entries(c.fields || {}).forEach(([k, v]) => { const cur = p[k]; if (!cur || (Array.isArray(cur) && !cur.length)) p[k] = clone(v); });
+    const U = w.unions, t = c.rel.type, nu = 'u_' + c.id;
+    const detach = id => U.forEach(u => u.children = u.children.filter(x => x !== id));
+    if (t === 'child') {
+      let u = c.rel.union && U.find(x => x.id === c.rel.union);
+      if (!u) { u = {id:nu, partners:[of.id], children:[]}; U.push(u); }
+      if (!u.children.includes(p.id)) { detach(p.id); u.children.push(p.id); }
+    } else if (t === 'parent') {
+      const u = U.find(x => x.children.includes(of.id));
+      if (!u) U.push({id:nu, partners:[p.id], children:[of.id]});
+      else if (!u.partners.includes(p.id) && u.partners.length < 2) u.partners.push(p.id);
+    } else if (t === 'partner') {
+      if (!U.some(u => u.partners.includes(p.id) && u.partners.includes(of.id))) {
+        const u = {id:nu, partners:[of.id, p.id], children:[], status:c.rel.ustatus || 'married'};
+        U.push(u); adoptKids(w, u, of.id, c.rel.kids);
+      }
+    } else if (t === 'sibling') {
+      let u = U.find(x => x.children.includes(of.id));
+      if (!u) { u = {id:nu, partners:[], children:[of.id]}; U.push(u); }
+      if (!u.children.includes(p.id)) { detach(p.id); u.children.push(p.id); }
+    }
+    cleanUnions(w);
+    if (pending) (w.flags.fields[p.id] ||= new Set()).add('rel');
+  } else if (c.kind === 'merge') {
+    // dwie osoby w jedną: dane wybrane przez administratora, wszystkie powiązania zostają
+    const keep = P[A(c.keep)], dropId = A(c.drop); if (!keep || !P[dropId] || keep.id === dropId || pending) return;
+    Object.assign(keep, clone(c.fields || {}));
+    const U = w.unions, sw = x => x === dropId ? keep.id : x;
+    U.forEach(u => { u.partners = [...new Set(u.partners.map(sw))]; u.children = [...new Set(u.children.map(sw))]; });
+    const pu = U.filter(u => u.children.includes(keep.id)).sort((a, b) => b.partners.length - a.partners.length);
+    pu.slice(1).forEach(u => u.children = u.children.filter(x => x !== keep.id));
+    const pairs = {};
+    U.forEach(u => {
+      if (u.partners.length !== 2) return;
+      const k = u.partners.slice().sort().join('|');
+      if (pairs[k]) { u.children.forEach(x => !pairs[k].children.includes(x) && pairs[k].children.push(x)); u.partners = []; u.children = []; }
+      else pairs[k] = u;
+    });
+    delete P[dropId]; w.alias[dropId] = keep.id;
+    Object.keys(w.alias).forEach(k => { if (w.alias[k] === dropId) w.alias[k] = keep.id; });
+    cleanUnions(w);
   } else if (c.kind === 'union') {
     const u = w.unions.find(x => x.id === c.uid); if (!u) return;
     Object.assign(u, clone(c.fields));
     if (pending) w.flags.unions.add(c.uid);
   } else if (c.kind === 'delete') {
-    if (!P[c.pid]) return;
-    if (pending) { w.flags.del.add(c.pid); return; }
-    delete P[c.pid];
-    w.unions.forEach(u => { u.partners = u.partners.filter(x => x!==c.pid); u.children = u.children.filter(x => x!==c.pid); });
-    w.unions = w.unions.filter(u => u.partners.length + u.children.length >= 2);
+    const id = A(c.pid);
+    if (!P[id]) return;
+    if (pending) { w.flags.del.add(id); return; }
+    delete P[id];
+    w.unions.forEach(u => { u.partners = u.partners.filter(x => x!==id); u.children = u.children.filter(x => x!==id); });
+    cleanUnions(w);
   }
 }
 
@@ -423,6 +500,21 @@ const partnerUnions = (w,id) => w.unions.filter(u => u.partners.includes(id));
 const partnersOf = (w,id) => partnerUnions(w,id).flatMap(u => u.partners.filter(x => x!==id).map(x => ({id:x, union:u})));
 const childrenOf = (w,id) => [...new Set(partnerUnions(w,id).flatMap(u => u.children))];
 const siblingsOf = (w,id) => { const u = parentUnion(w,id); return u ? u.children.filter(x => x!==id) : []; };
+
+const sameName = (a, b) => {
+  const f = norm(a.first); if (!f || f !== norm(b.first)) return false;
+  const la = [a.last, a.maiden].filter(Boolean).map(norm), lb = [b.last, b.maiden].filter(Boolean).map(norm);
+  return la.some(x => lb.includes(x));
+};
+// krótki opis, po którym rodzina rozpozna osobę: „rodzice: Janusz Lemański i Hanna Lemańska”
+function whoIs(w, id){
+  const p = w.people[id]; if (!p) return '';
+  const par = parentsOf(w, id).map(x => shortName(w.people[x]));
+  if (par.length) return 'rodzice: ' + par.join(' i ');
+  const pa = partnersOf(w, id)[0];
+  if (pa) return partnerWord(w, pa.id, pa.union).toLowerCase() + ': ' + shortName(w.people[pa.id]);
+  return years(p);
+}
 
 /* ---------- prezentacja ---------- */
 function fullName(p){
@@ -974,14 +1066,15 @@ const byId = id => DATA.changes.find(c => c.id === id);
 function dependents(id){
   const c = byId(id), out = [];
   if (c && c.kind === 'add') DATA.changes.forEach(d => {
-    if (d.id !== id && d.status !== 'rejected' && d.status !== 'undone' && (d.pid === c.newId || d.rel?.of === c.newId || d.uid === 'u_' + c.id)) out.push(d, ...dependents(d.id));
+    if (d.id === id || d.status === 'rejected' || d.status === 'undone') return;
+    if ([d.pid, d.rel?.of, d.keep, d.drop].includes(c.newId) || d.uid === 'u_' + c.id || d.rel?.union === 'u_' + c.id) out.push(d, ...dependents(d.id));
   });
   return out;
 }
 function prereqs(c){
-  const ref = c.pid || c.rel?.of;
-  const a = DATA.changes.find(x => x.kind === 'add' && x.status === 'pending' && (x.newId === ref || 'u_' + x.id === c.uid));
-  return a ? [...prereqs(a), a] : [];
+  const refs = [c.pid, c.rel?.of, c.keep, c.drop].filter(Boolean);
+  const pre = DATA.changes.filter(x => x.kind === 'add' && x.status === 'pending' && x.id !== c.id && (refs.includes(x.newId) || 'u_' + x.id === c.uid || 'u_' + x.id === c.rel?.union));
+  return pre.flatMap(a => [...prereqs(a), a]);
 }
 async function undo(id){
   if (!isAdmin()) {
@@ -1022,6 +1115,8 @@ function describe(c, wa){
   const nm = id => esc(shortName(wa.people[id]));
   if (c.kind === 'add') return `Nowa osoba: <b>${esc(shortName(c.person))}</b> — ${REL[c.rel.type]} osoby ${nm(c.rel.of)}`;
   if (c.kind === 'delete') return `Usunięcie osoby: <b>${nm(c.pid)}</b>`;
+  if (c.kind === 'link') return `Połączenie: <b>${nm(c.pid)}</b> — ${REL[c.rel.type]} osoby ${nm(c.rel.of)}`;
+  if (c.kind === 'merge') return `Połączono w jedną osobę: <b>${esc((c.names || []).join(' + '))}</b>`;
   if (c.kind === 'union') { const u = wa.unions.find(x => x.id === c.uid); return `Związek: <b>${u ? u.partners.map(nm).join(' i ') : '?'}</b>`; }
   const ks = Object.keys(c.fields);
   if (ks.includes('photo') && ks.every(k => k === 'photo' || k === 'photoOrig')) return `Nowe zdjęcie: <b>${nm(c.pid)}</b>`;
@@ -1034,6 +1129,10 @@ function fmt(k, v){
   if (k === 'dead') return v ? 'Tak' : 'Nie';
   if (k === 'status') return USTATUS[ustatus({status:v})].join(' ');
   return v || '—';
+}
+function dupWarn(person, selfId, V){
+  const d = Object.values(V.people).filter(q => q.id !== selfId && sameName(person, q));
+  return d.length ? `<div class="conflict">⚠️ Możliwy duplikat – w drzewie jest już: ${d.map(q => `<b>${esc(shortName(q))}</b> (${esc(whoIs(V, q.id))})`).join(', ')}. Jeśli to ta sama osoba, odrzuć tę zmianę albo po zatwierdzeniu użyj „Połącz z…”.</div>` : '';
 }
 function inboxHTML(){
   const A = build(false), V = build(true);
@@ -1060,7 +1159,12 @@ function inboxHTML(){
       body = ['first','last','maiden','born','died'].filter(k => c.person[k] || ['first','last'].includes(k)).map(k =>
         `<div class="diff"><div class="lbl">${FIELDS[k]}</div><input type="text" data-k="${k}" value="${esc(c.person[k]||'')}" aria-label="${FIELDS[k]}"></div>`).join('')
         + (c.person.photo ? `<div class="diff"><div class="lbl">Zdjęcie</div><span class="av s" style="width:80px;height:80px"><img src="${ph(c.person.photo)}" alt=""></span></div>` : '')
+        + (c.rel.kids?.length ? `<div class="diff"><div class="lbl">Dzieci tej pary</div>${c.rel.kids.map(k => esc(shortName(V.people[k]))).join(', ')}</div>` : '')
+        + dupWarn(c.person, c.newId, V)
         + (pr.length ? `<div class="conflict">🔗 Ta osoba jest dodana do kogoś, kto też czeka na zatwierdzenie (${pr.map(a => esc(shortName(a.person))).join(', ')}). Zatwierdzenie zatwierdzi oba.</div>` : '');
+    } else if (c.kind === 'link') {
+      body = `<div class="diff">Osoba, która <b>już jest w drzewie</b> (${esc(whoIs(A, c.pid) || 'bez powiązań')}), zostanie połączona jako <b>${REL[c.rel.type]}</b> osoby ${esc(shortName(V.people[c.rel.of]))}.
+        ${c.rel.type === 'child' || c.rel.type === 'sibling' ? 'Jeśli miała innych rodziców, zostaną zastąpieni.' : ''}</div>`;
     } else if (c.kind === 'union') {
       const u = A.unions.find(x => x.id === c.uid) || {};
       body = Object.entries(c.fields).map(([k, v]) => {
@@ -1158,6 +1262,8 @@ function editPerson(){
   const id = S.focus, p = W.people[id];
   openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">＋ Dodaj krewnego</button>` + personForm(p, true) + `
     <details class="more"><summary>Więcej opcji</summary>
+      ${isAdmin() ? `<p style="color:var(--muted)">Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
+      <button type="button" class="btn block" data-mergeperson style="margin-bottom:14px">🔗 Połącz z inną osobą…</button>` : ''}
       <p style="color:var(--muted)">Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
       <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button></details>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zmiany</button>`,
@@ -1175,6 +1281,7 @@ function editPerson(){
         if (Object.keys(fields).length && !await commit({kind:'edit', pid:id, fields})) return;
         addRelative();
       };
+      el.querySelector('[data-mergeperson]')?.addEventListener('click', () => { close(); mergePick(id); });
       el.querySelector('[data-del]').onclick = async () => {
         close();
         if (!await ask(`Usunąć osobę „${fullName(p)}” z drzewa?`, 'Tak, usuń')) return;
@@ -1225,7 +1332,7 @@ function addForm(type, union){
   if (type === 'sibling') last = p.maiden || p.last;
   const np = Object.assign(blank(), {last});
   let photo = '', photoOrig = '';
-  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') : '') + `
+  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') + kidsField(of) : '') + `
     <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">📷 Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Dodaj do drzewa</button>`,
     (el, close) => {
@@ -1240,10 +1347,21 @@ function addForm(type, union){
       el.querySelector('[data-save]').onclick = async () => {
         const o = readForm(el);
         if (!o.first && !o.last) { el.querySelector('#f-first').focus(); return toast('Wpisz przynajmniej imię albo nazwisko.'); }
-        close();
-        const newId = 'n_' + uid();
         const ust = el.querySelector('[name=ustatus]:checked')?.value;
-        const ch = await commit({kind:'add', newId, person:Object.assign(o, photo ? {photo, photoOrig} : {}), rel:Object.assign({type, of, union}, ust ? {ustatus:ust} : {})});
+        const kids = [...el.querySelectorAll('[name=kid]:checked')].map(i => i.value);
+        const rel = Object.assign({type, of, union}, ust ? {ustatus:ust} : {}, kids.length ? {kids} : {});
+        const person = Object.assign(o, photo ? {photo, photoOrig} : {});
+        close();
+        const dups = Object.values(W.people).filter(q => q.id !== of && sameName(o, q));
+        const pick = dups.length ? await dupDialog(o, dups) : 'new';
+        if (pick === null) return;
+        if (pick !== 'new') {
+          const ch = await commit({kind:'link', pid:pick, rel, fields:person});
+          if (ch) { S.focus = pick; save(); render(); }
+          return;
+        }
+        const newId = 'n_' + uid();
+        const ch = await commit({kind:'add', newId, person, rel});
         if (ch) { S.focus = newId; save(); render(); }
       };
     });
@@ -1251,6 +1369,87 @@ function addForm(type, union){
 function statusField(st){
   return `<div class="field"><span class="lbl" id="us-l">Jaki to związek?</span><div class="choices ugrid" role="radiogroup" aria-labelledby="us-l">${Object.entries(USTATUS).map(([k, [e, l]]) =>
     `<label class="choice"><input type="radio" name="ustatus" value="${k}" ${st === k ? 'checked' : ''}><span>${e} ${l}</span></label>`).join('')}</div></div>`;
+}
+function kidsField(of){
+  const lone = childrenOf(W, of).filter(k => { const u = parentUnion(W, k); return u && u.partners.length === 1 && u.partners[0] === of; });
+  if (!lone.length) return '';
+  return `<fieldset class="group"><legend>Czy te dzieci są też dziećmi nowej osoby?</legend><div class="checks">${lone.map(k =>
+    `<label class="check"><input type="checkbox" name="kid" value="${k}" checked> ${esc(shortName(W.people[k]))}</label>`).join('')}</div>
+    <p class="help" style="margin:-6px 0 12px;color:var(--muted);font-size:14px">Odznacz dzieci z wcześniejszego związku.</p></fieldset>`;
+}
+// Zwraca id istniejącej osoby, 'new' (to ktoś inny) albo null (zamknięto okno).
+function dupDialog(o, dups){
+  return new Promise(resolve => {
+    let done = false;
+    const n = esc([o.first, o.last].filter(Boolean).join(' '));
+    openSheet('Czy to ta sama osoba?', `<p style="margin-top:0">W drzewie ${dups.length > 1 ? 'są już osoby' : 'jest już osoba'} o imieniu i nazwisku <b>${n}</b>:</p>
+      <div class="listpick">${dups.map(q => `<div class="dup">${miniCard(W, q.id).replace('data-go=', 'data-x=')}
+        <p class="dupwho">${esc(whoIs(W, q.id))}</p>
+        <button type="button" class="btn primary block" data-same="${q.id}">Tak, to ta sama osoba</button></div>`).join('')}
+      <button type="button" class="btn ghost block" data-other>Nie, to ktoś inny – dodaj nową osobę</button></div>`, '',
+      (el, close) => {
+        const fin = v => { done = true; close(); resolve(v); };
+        el.querySelectorAll('[data-same]').forEach(b => b.onclick = () => fin(b.dataset.same));
+        el.querySelector('[data-other]').onclick = () => fin('new');
+        new MutationObserver((_, mo) => { if (!el.isConnected) { mo.disconnect(); if (!done) resolve(null); } }).observe(document.body, {childList:true});
+      });
+  });
+}
+const MERGE_KEYS = ['first','last','maiden','nick','gender','born','bornPlace','dead','died','diedPlace','deathCause','burial','job','lived','health','cancerType','healthNotes','note','photo'];
+function mergePick(aId){
+  const a = W.people[aId];
+  openSheet('Połącz z…', `<p style="margin-top:0">Wybierz osobę, która jest tą samą osobą co <b>${esc(fullName(a))}</b>.</p>
+    <div class="field"><label for="f-mq">Imię lub nazwisko</label><input type="search" id="f-mq" autocomplete="off"></div><div class="results" aria-live="polite"></div>`, '',
+    (el, close) => {
+      const q = el.querySelector('#f-mq'), r = el.querySelector('.results');
+      const draw = () => {
+        const tq = norm(q.value);
+        const list = Object.values(W.people).filter(p => p.id !== aId && (tq ? norm([p.first, p.last, p.maiden, p.nick].join(' ')).includes(tq) : norm(p.first) === norm(a.first) && p.first))
+          .sort((x, y) => sameName(a, y) - sameName(a, x) || shortName(x).localeCompare(shortName(y), 'pl')).slice(0, 40);
+        r.innerHTML = list.length ? list.map(p => `<div class="dup">${miniCard(W, p.id).replace('data-go=', 'data-pick=')}<p class="dupwho">${esc(whoIs(W, p.id))}</p></div>`).join('')
+          : `<p>${tq ? 'Nikogo nie znaleziono.' : 'Wpisz imię lub nazwisko drugiej osoby.'}</p>`;
+      };
+      q.addEventListener('input', draw); draw();
+      r.addEventListener('click', e => { const b = e.target.closest('[data-pick]'); if (b) { close(); mergeCompare(aId, b.dataset.pick); } });
+    });
+}
+function mergeCompare(aId, bId){
+  const a = W.people[aId], b = W.people[bId];
+  const empty = v => v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
+  const auto = {}, pick = [];
+  MERGE_KEYS.forEach(k => {
+    const va = a[k], vb = b[k];
+    if (k === 'health') auto[k] = [...new Set([...(va || []), ...(vb || [])])];
+    else if (k === 'dead') auto[k] = !!(va || vb);
+    else if (empty(vb) || JSON.stringify(va) === JSON.stringify(vb)) auto[k] = va;
+    else if (empty(va)) auto[k] = vb;
+    else if (k === 'note') auto[k] = va + '\n\n' + vb;
+    else pick.push(k);
+  });
+  const show = (k, v, p) => k === 'photo' ? `<span class="av s" style="width:64px;height:64px"><img src="${ph(v)}" alt="Zdjęcie: ${esc(shortName(p))}"></span>` : esc(fmt(k, v));
+  const both = (a.note && b.note && a.note !== b.note);
+  openSheet('Połącz w jedną osobę', `
+    <div class="mergepair">${miniCard(W, aId).replace('data-go=', 'data-x=')}<span aria-hidden="true">＋</span>${miniCard(W, bId).replace('data-go=', 'data-x=')}</div>
+    <p>Te dwie osoby staną się jedną. Wszystkie powiązania obu osób (rodzice, partnerzy, dzieci) zostaną zachowane.</p>
+    ${pick.length ? `<p style="font-weight:650;margin-bottom:6px">Wybierz, która wersja jest prawidłowa:</p>` + pick.map(k => `<div class="field"><span class="lbl">${FIELDS[k]}</span><div class="choices">
+        <label class="choice"><input type="radio" name="m-${k}" value="a" checked><span>${show(k, a[k], a)}</span></label>
+        <label class="choice"><input type="radio" name="m-${k}" value="b"><span>${show(k, b[k], b)}</span></label></div></div>`).join('')
+      : `<p style="color:var(--muted)">Dane obu osób się nie wykluczają – zostaną połączone automatycznie.</p>`}
+    ${both ? `<div class="field"><label for="f-mnote">Notatka (połączona z obu – możesz poprawić)</label><textarea id="f-mnote">${esc(auto.note)}</textarea></div>` : ''}`,
+    `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Połącz</button>`,
+    (el, close) => {
+      el.querySelector('[data-save]').onclick = async () => {
+        const fields = clone(auto);
+        pick.forEach(k => { const src = el.querySelector(`[name=m-${k}]:checked`).value === 'a' ? a : b; fields[k] = clone(src[k]); if (k === 'photo') fields.photoOrig = src.photoOrig || ''; });
+        if (!pick.includes('photo')) fields.photoOrig = fields.photo === b.photo && !a.photo ? (b.photoOrig || '') : (a.photoOrig || '');
+        if (both) fields.note = el.querySelector('#f-mnote').value.trim();
+        const score = id => (parentUnion(W, id)?.partners.length || 0) * 10 + childrenOf(W, id).length + partnersOf(W, id).length;
+        const [keep, drop] = score(bId) > score(aId) ? [bId, aId] : [aId, bId];
+        close();
+        const ch = await commit({kind:'merge', keep, drop, fields, names:[shortName(a), shortName(b)]});
+        if (ch) { S.focus = keep; save(); render(); }
+      };
+    });
 }
 function editUnion(uid){
   const u = W.unions.find(x => x.id === uid); if (!u) return;
