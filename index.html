@@ -215,6 +215,56 @@ details.more summary{cursor:pointer;color:var(--muted);min-height:44px;display:f
 .gate p{color:var(--muted);margin:0 0 18px}
 .gate form{text-align:left}
 .err{color:var(--danger);font-weight:600;margin-top:8px}
+
+/* ruch: krótko i miękko; wyłączony, gdy ktoś prosi o mniej animacji */
+:root{--ease:cubic-bezier(.2,.8,.2,1)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes sheetDown{from{transform:none}to{transform:translateY(100%)}}
+@keyframes sheetPop{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes sheetAway{from{opacity:1;transform:none}to{opacity:0;transform:translateY(12px) scale(.98)}}
+@keyframes pop{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,18px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,12px)}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.sheet-bg{animation:fadeIn .2s ease-out}
+.sheet{animation:sheetUp .34s var(--ease)}
+.sheet-bg.closing{animation:fadeOut .22s ease-in forwards}
+.sheet-bg.closing .sheet{animation:sheetDown .24s ease-in forwards}
+@media (min-width:700px){
+  .sheet{animation:sheetPop .26s var(--ease)}
+  .sheet-bg.closing .sheet{animation:sheetAway .2s ease-in forwards}
+}
+.enter{animation:rise .32s var(--ease)}
+.enter .hero .av{animation:pop .42s var(--ease)}
+.enter .section{animation:rise .36s var(--ease) both}
+.enter .section:nth-of-type(2){animation-delay:.03s}
+.enter .section:nth-of-type(3){animation-delay:.06s}
+.enter .section:nth-of-type(4){animation-delay:.09s}
+.enter .section:nth-of-type(n+5){animation-delay:.12s}
+.pane.tree.enter{animation:fadeIn .25s ease-out}
+.btn,.mini,.iconbtn,.relpick button,.choice span,.check,nav.tabs button,.zoom button,.avbtn{transition:transform .14s var(--ease),background-color .18s,border-color .18s,box-shadow .18s,color .18s}
+.btn:active,.mini:active,.iconbtn:active,.relpick button:active,.choice span:active,.check:active,.zoom button:active,.avbtn:active{transform:scale(.96)}
+nav.tabs button:active svg{transform:scale(.9)}
+nav.tabs button svg{transition:transform .14s var(--ease)}
+.mini:hover,.relpick button:hover{box-shadow:0 4px 14px rgba(29,36,51,.10);transform:translateY(-1px)}
+nav.tabs button[aria-current=page]::before{animation:grow .3s var(--ease)}
+.badge{animation:breathe 2.6s ease-in-out infinite}
+.toast{animation:toastIn .32s var(--ease)}
+.toast.out{animation:toastOut .2s ease-in forwards}
+.chg{transition:opacity .25s ease,transform .25s var(--ease),max-height .3s ease .1s,margin .3s ease .1s,padding .3s ease .1s;max-height:4000px;overflow:hidden}
+.chg.leaving{opacity:0;transform:translateX(40px);max-height:0;margin-bottom:0;padding-top:0;padding-bottom:0;border-width:0}
+.gate .box{animation:rise .4s var(--ease)}
+.gate .bob{display:inline-block;animation:bob 1.6s ease-in-out infinite}
+svg.tree .card{transition:opacity .2s}
+svg.tree .card.on rect.bg{animation:breathe 1.2s ease-in-out 2}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
+}
 </style>
 </head>
 <body>
@@ -414,8 +464,9 @@ wide.addEventListener('change', () => render());
 
 function pendingCount(){ return DATA.changes.filter(c => c.status==='pending').length }
 
+let lastNav = null;
 function render(){
-  if (!S.pw || !DATA) return renderGate();
+  if (!S.pw || !DATA) { lastNav = null; return renderGate(); }
   if (!DATA.base) { app.innerHTML = `<div class="gate"><div class="box"><h1>Drzewo jest puste</h1><p>W bazie nie ma jeszcze danych drzewa.</p></div></div>`; return; }
   W = build(!isAdmin());
   if (!W.people[S.focus]) S.focus = W.people[START] ? START : Object.keys(W.people)[0];
@@ -446,6 +497,13 @@ function render(){
   // na szerokim ekranie oba panele widoczne
   if (wide.matches) { document.querySelector('.pane.side').hidden = false; }
   setupTree(prevScroll);
+  // przy przejściu do innej osoby lub zakładki nowa treść wsuwa się delikatnie
+  const nav = S.focus + '|' + S.view;
+  if (lastNav !== null && nav !== lastNav) {
+    const el = S.view === 'tree' && !wide.matches ? document.querySelector('.pane.tree') : document.querySelector('.pane.side .inner.on > .wrap');
+    el?.classList.add('enter');
+  }
+  lastNav = nav;
 }
 
 const ICON = {
@@ -634,13 +692,14 @@ function layout(w){
     const save = () => gens.map(g => rows[g].map(un => [un, un.members.slice()]));
     const load = s => gens.forEach((g, i) => { rows[g] = s[i].map(([un, ms]) => { un.members = ms.slice(); return un; }); reindex(g); });
     const fullCost = () => total() * 1000 + gens.reduce((s, g) => s + intruders(g), 0);
-    let bestS = save(), bestC = fullCost();
-    for (let round = 0; round < 2 && bestC >= 1000; round++) {
+    let bestS = save(), bestC = fullCost(), tries = 0;   // limit prób: na telefonie liczy się szybko, a wynik jest wszędzie taki sam
+    for (let round = 0; round < 2 && bestC >= 1000 && tries <= 120; round++) {
       for (const g of gens) for (const un of rows[g].slice()) {
         if (bestC < 1000) break;
         const base = bestS, cur = rows[g].indexOf(un);
         for (let i = 0; i < rows[g].length; i++) {
           if (i === cur) continue;
+          if (++tries > 120) break;
           load(base);
           const rest = rows[g].filter(x => x !== un);
           rows[g] = [...rest.slice(0, i), un, ...rest.slice(i)]; reindex(g); flipUnits(g);
@@ -694,22 +753,37 @@ function layout(w){
   Object.keys(P).forEach(id => { const x = cxOf(id) - CW / 2; pos[id] = {x, y:(P[id].gen - g0) * RH + 30}; minX = Math.min(minX, x); maxX = Math.max(maxX, x); });
   Object.values(pos).forEach(p => p.x += 40 - minX);
 
-  /* --- 4. wysokości poziomych linii rodzeństwa --- */
-  const bus = {};
+  /* --- 4. wysokości poziomych linii rodzeństwa ---
+     Gdy linie dwóch rodzin zachodzą na siebie, ta, której pionowa kreska przechodziłaby przez drugą,
+     idzie wyżej. Gdy poziomów jest więcej niż mieści odstęp, niższe pokolenia przesuwają się w dół. */
+  const LV = 14, FREE = 3, levels = {}, extra = {};
   gens.forEach(g => {
     const spans = U.map(u => {
       const ps = partnersIn(u, g), ks = u.children.filter(c => P[c] && P[c].gen === g + 1);
       if (!ks.length || (!ps.length && g !== P[ks[0]].gen - 1)) return null;
-      const xs = ks.map(c => pos[c].x + CW / 2).concat(ps.length ? [avg(ps.map(x => pos[x].x + CW / 2))] : []);
-      return {u, lo:Math.min(...xs), hi:Math.max(...xs)};
-    }).filter(Boolean).sort((a, b) => a.lo - b.lo);
-    const ends = [];
-    spans.forEach(s => {
-      let lv = ends.findIndex(e => e < s.lo - 16); if (lv < 0) { lv = ends.length; ends.push(0); }
-      ends[lv] = s.hi; bus[s.u.id] = (g + 1 - g0) * RH + 30 - 22 - lv * 14;
-    });
+      const kx = ks.map(c => pos[c].x + CW / 2), ax = ps.length ? avg(ps.map(x => pos[x].x + CW / 2)) : null;
+      const xs = ax === null ? kx : kx.concat([ax]);
+      return {u, lo:Math.min(...xs), hi:Math.max(...xs), ax, kx};
+    }).filter(Boolean);
+    const inside = (x, s) => x > s.lo + 2 && x < s.hi - 2;
+    const above = spans.map((a, i) => spans.map((b, j) => i !== j && ((a.ax !== null && inside(a.ax, b)) || b.kx.some(x => inside(x, a)))));
+    const lv = spans.map(() => 0);
+    for (let it = 0; it < 40; it++) {
+      let ch = false;
+      spans.forEach((_, i) => spans.forEach((_, j) => { if (above[i][j] && !above[j][i] && lv[i] <= lv[j]) { lv[i] = lv[j] + 1; ch = true; } }));
+      for (let i = 0; i < spans.length; i++) for (let j = i + 1; j < spans.length; j++)
+        if (lv[i] === lv[j] && Math.min(spans[i].hi, spans[j].hi) - Math.max(spans[i].lo, spans[j].lo) > -16) { lv[above[j][i] ? j : i]++; ch = true; }
+      if (!ch) break;
+    }
+    spans.forEach((s, i) => levels[s.u.id] = [g, lv[i]]);
+    extra[g] = Math.max(0, Math.max(0, ...lv) - FREE + 1) * LV;
   });
-  return {pos, bus, crossings:total(), width:maxX - minX + CW + 80, height:(gens[gens.length - 1] - g0) * RH + 30 + CH + 60};
+  const rowY = {}; let y = 30;
+  gens.forEach(g => { rowY[g] = y; y += RH + (extra[g] || 0); });
+  Object.keys(P).forEach(id => pos[id].y = rowY[P[id].gen]);
+  const bus = {};
+  Object.entries(levels).forEach(([uid, [g, lv]]) => bus[uid] = rowY[g + 1] - 22 - lv * LV);
+  return {pos, bus, crossings:total(), width:maxX - minX + CW + 80, height:rowY[gens[gens.length - 1]] + CH + 60};
 }
 let layoutMemo = {sig:'', L:null};
 function treeHTML(){
@@ -718,6 +792,7 @@ function treeHTML(){
   if (layoutMemo.sig !== sig) layoutMemo = {sig, L:layout(w)};
   const L = layoutMemo.L, P = L.pos; TL = L;
   let lines = '', marks = '';
+  const bracketN = {};
   w.unions.forEach((u, i) => {
     const ps = u.partners.filter(id => P[id]), ks = u.children.filter(id => P[id]);
     let ax, ay;
@@ -725,9 +800,17 @@ function treeHTML(){
     if (ps.length === 2) {
       const [a,b] = ps.map(cx).sort((m,n) => m-n), y = cy(ps[0]);
       const div = u.status === 'rozstanie';
-      lines += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="#5c5548" stroke-width="2.5" ${div?'stroke-dasharray="7 6"':''}/>`;
-      ax = (a+b)/2; ay = y;
-      marks += `<text x="${ax}" y="${y+7}" text-anchor="middle" font-size="20" aria-hidden="true">${div?'💔':'❤️'}</text>`;
+      if (b - a > CW + GAP + 1) {
+        // partner nie stoi obok (np. trzeci związek): łuk nad kartami, by nie nakładał się na inne linie
+        const top = P[ps[0]].y - 12 - (bracketN[P[ps[0]].y] = (bracketN[P[ps[0]].y] || 0) + 1) * 8;
+        lines += `<path d="M${a} ${P[ps[0]].y} V${top} H${b} V${P[ps[0]].y}" fill="none" stroke="#5c5548" stroke-width="2.5" ${div?'stroke-dasharray="7 6"':''}/>`;
+        ax = (a+b)/2; ay = top;
+        marks += `<text x="${ax}" y="${top+7}" text-anchor="middle" font-size="18" aria-hidden="true">${div?'💔':'❤️'}</text>`;
+      } else {
+        lines += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="#5c5548" stroke-width="2.5" ${div?'stroke-dasharray="7 6"':''}/>`;
+        ax = (a+b)/2; ay = y;
+        marks += `<text x="${ax}" y="${y+7}" text-anchor="middle" font-size="20" aria-hidden="true">${div?'💔':'❤️'}</text>`;
+      }
     } else if (ps.length === 1) { ax = cx(ps[0]); ay = P[ps[0]].y + CH; }
     if (!ks.length) return;
     const ky = Math.min(...ks.map(id => P[id].y));
@@ -746,7 +829,7 @@ function treeHTML(){
     const pic = src
       ? `<clipPath id="c-${p.id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><image href="${src}" x="${cx-r}" y="${cy-r}" width="${2*r}" height="${2*r}" clip-path="url(#c-${p.id})" preserveAspectRatio="xMidYMid slice" ${p.dead?'style="filter:grayscale(.35)"':''}/>`
       : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#efeae0"/><text x="${cx}" y="${cy+9}" text-anchor="middle" font-size="26" font-weight="700" fill="#566072">${esc(initials(p))}</text>`;
-    return `<g class="card" role="button" tabindex="0" data-go="${p.id}" aria-label="${esc(fullName(p) + (years(p)?', '+years(p):''))}">
+    return `<g class="card${on ? ' on' : ''}" role="button" tabindex="0" data-go="${p.id}" aria-label="${esc(fullName(p) + (years(p)?', '+years(p):''))}">
       <rect class="bg" x="${x}" y="${y}" width="${CW}" height="${CH}" rx="16" fill="${pend?'#fff2d6':'#fff'}" stroke="${on?'#2e6a4f':pend||fpend?'#e0a84a':'#d6cfc2'}" stroke-width="${on?4:pend||fpend?2.5:1.5}" ${pend||del?'stroke-dasharray="8 5"':''}/>
       ${pic}<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-width="3"/>
       <text x="${cx}" y="${y+112}" text-anchor="middle" font-size="16" font-weight="700" fill="#1d2433">${esc(n1)}</text>
@@ -822,14 +905,13 @@ function zoomTo(z, cx, cy, sx, sy){
   svg.setAttribute('width', TL.width * S.zoom); svg.setAttribute('height', TL.height * S.zoom);
   box.scrollLeft = cx * S.zoom - sx; box.scrollTop = cy * S.zoom - sy;
 }
-function centerOn(id){
+function centerOn(id, smooth){
   const box = document.querySelector('.treebox'); if (!box || !TL || !TL.pos[id]) return;
   const z = S.zoom, p = TL.pos[id];
-  box.scrollLeft = (p.x + CW/2) * z - box.clientWidth/2;
-  box.scrollTop = (p.y + CH/2) * z - box.clientHeight/2;
+  box.scrollTo({left:(p.x + CW/2) * z - box.clientWidth/2, top:(p.y + CH/2) * z - box.clientHeight/2, behavior:smooth && !reduceMotion() ? 'smooth' : 'auto'});
 }
 function setZoom(d){
-  if (d === 0) return centerOn(S.focus);
+  if (d === 0) return centerOn(S.focus, true);
   const box = document.querySelector('.treebox'), w = box.clientWidth/2, h = box.clientHeight/2;
   zoomTo(S.zoom * (d > 0 ? 1.25 : 0.8), (box.scrollLeft + w) / S.zoom, (box.scrollTop + h) / S.zoom, w, h);
 }
@@ -962,13 +1044,21 @@ function inboxHTML(){
 }
 
 /* ---------- formularze ---------- */
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function openSheet(title, bodyHTML, footHTML, onMount){
   document.querySelector('.toast')?.remove();
   const bg = document.createElement('div');
   bg.className = 'sheet-bg';
   bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button data-close aria-label="Zamknij">✕</button></header><form class="body" novalidate>${bodyHTML}</form>${footHTML ? `<div class="foot">${footHTML}</div>` : ''}</div>`;
   const prevFocus = document.activeElement;
-  const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); prevFocus?.focus?.(); };
+  let closed = false;
+  const close = () => {
+    if (closed) return; closed = true;
+    document.removeEventListener('keydown', onKey);
+    bg.classList.add('closing'); bg.style.pointerEvents = 'none';
+    setTimeout(() => { bg.remove(); }, reduceMotion() ? 0 : 240);
+    prevFocus?.focus?.();
+  };
   const onKey = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onKey);
   bg.addEventListener('click', e => { if (e.target === bg || e.target.closest('[data-close]')) close(); });
@@ -1240,16 +1330,18 @@ function go(id, view){
   if (wide.matches && S.view === 'inbox' && view === 'person') S.view = 'person';
   save(); render();
   if (!wide.matches) window.scrollTo(0, 0); else document.querySelector('.pane.side')?.scrollTo(0, 0);
-  if (wide.matches) centerOn(id);
+  if (wide.matches) centerOn(id, true);
 }
 let toastT;
+const leave = el => new Promise(res => { if (!el || reduceMotion()) return res(); el.classList.add('leaving'); setTimeout(res, 320); });
 function toast(msg, undoFn){
   document.querySelector('.toast')?.remove(); clearTimeout(toastT);
   const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status');
   t.innerHTML = `<span>${esc(msg)}</span>${undoFn ? '<button>↶ Cofnij</button>' : ''}`;
-  if (undoFn) t.querySelector('button').onclick = () => { t.remove(); undoFn(); };
+  const hide = () => { t.classList.add('out'); setTimeout(() => t.remove(), 200); };
+  if (undoFn) t.querySelector('button').onclick = () => { hide(); undoFn(); };
   document.body.appendChild(t);
-  toastT = setTimeout(() => t.remove(), undoFn ? 8000 : 3500);
+  toastT = setTimeout(hide, undoFn ? 8000 : 3500);
 }
 
 app.addEventListener('click', e => {
@@ -1266,9 +1358,9 @@ app.addEventListener('click', e => {
   if (ap) {
     const card = ap.closest('.chg'), c = byId(ap.dataset.approve), o = {};
     card.querySelectorAll('[data-k]').forEach(i => o[i.dataset.k] = i.value.trim());
-    return adminAct(() => approve(c.id, Object.keys(o).length ? o : null)).then(ok => ok && toast('Zatwierdzone – wszyscy już to widzą.', () => undo(c.id).then(ok => ok && toast('Cofnięto.'))));
+    return leave(card).then(() => adminAct(() => approve(c.id, Object.keys(o).length ? o : null))).then(ok => ok && toast('Zatwierdzone – wszyscy już to widzą.', () => undo(c.id).then(ok => ok && toast('Cofnięto.'))));
   }
-  const rj = t.closest('[data-reject]'); if (rj) return adminAct(() => reject(rj.dataset.reject)).then(ok => ok && toast('Odrzucono.'));
+  const rj = t.closest('[data-reject]'); if (rj) return leave(rj.closest('.chg')).then(() => adminAct(() => reject(rj.dataset.reject))).then(ok => ok && toast('Odrzucono.'));
   const un = t.closest('[data-undo]'); if (un) return undo(un.dataset.undo).then(ok => ok && toast('Cofnięto zmianę.'));
   const mg = t.closest('[data-merge]');
   if (mg) { const c = byId(mg.dataset.merge), A = build(false), ta = mg.closest('.diff').querySelector('textarea'); ta.value = (A.people[c.pid].note + '\n\n' + c.fields.note).trim(); mg.remove(); ta.focus(); return; }
@@ -1288,7 +1380,7 @@ app.addEventListener('click', e => {
   if (act === 'search') openSearch();
   if (act === 'menu') openMenu();
   if (act === 'inbox') { S.view = S.view === 'inbox' ? 'person' : 'inbox'; save(); render(); }
-  if (act === 'approveall') adminAct(() => DATA.changes.filter(c => c.status === 'pending').sort((a,b) => a.ts-b.ts).forEach(c => approve(c.id))).then(ok => ok && toast('Zatwierdzono wszystko.'));
+  if (act === 'approveall') Promise.all([...document.querySelectorAll('.chg')].map(leave)).then(() => adminAct(() => DATA.changes.filter(c => c.status === 'pending').sort((a,b) => a.ts-b.ts).forEach(c => approve(c.id)))).then(ok => ok && toast('Zatwierdzono wszystko.'));
 });
 app.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('g[data-go]')) { e.preventDefault(); go(e.target.dataset.go, 'person'); }
@@ -1328,7 +1420,7 @@ function renderGate(msg){
 
 async function start(){
   if (!S.pw) return renderGate();
-  app.innerHTML = `<div class="gate"><div class="box"><div style="font-size:54px" aria-hidden="true">🌳</div><h1>Wczytuję drzewo…</h1></div></div>`;
+  app.innerHTML = `<div class="gate"><div class="box"><div style="font-size:54px" aria-hidden="true"><span class="bob">🌳</span></div><h1>Wczytuję drzewo…</h1></div></div>`;
   try { await refresh(); render(); }
   catch(e) {
     if (e.message === 'bad_password') { S.pw = ''; save(); return renderGate('Hasło się zmieniło. Wpisz nowe hasło.'); }
