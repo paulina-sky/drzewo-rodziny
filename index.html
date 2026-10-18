@@ -60,6 +60,7 @@ nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;le
 .count{background:var(--danger);color:#fff;border-radius:999px;font-size:12px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
 nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 
+.desk-only{display:none!important}
 @media (min-width:1000px){
   main{padding-bottom:0}
   nav.tabs{display:none}
@@ -72,7 +73,6 @@ nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
   .desk-only{display:inline-flex!important}
   .legend{display:flex}
 }
-.desk-only{display:none!important}
 
 /* osoba */
 .wrap{max-width:640px;margin:0 auto;padding-block:14px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -511,28 +511,212 @@ function personHTML(id){
 }
 
 /* ---------- całe drzewo ---------- */
-const CW = 136, CH = 156, GAP = 34, RH = 236;
+const CW = 136, CH = 156, GAP = 34, UGAP = 64, RH = 236;
 let TL = null;
+const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+/* Układ drzewa liczony od nowa przy każdej zmianie:
+   1. pary (i osoby z kilkoma partnerami) stoją zawsze obok siebie jako jedna „jednostka”,
+   2. kolejność jednostek w każdym pokoleniu dobieramy tak, by linie się nie krzyżowały
+      (rodzeństwo obok siebie, pod rodzicami; kilka przejść w dół i w górę, wybieramy najlepszy wynik),
+   3. położenie: dzieci pod rodzicami, rodzice nad dziećmi, bez nachodzenia na siebie,
+   4. poziome linie rodzeństwa, które zachodziłyby na siebie, rysujemy na różnych wysokościach. */
 function layout(w){
-  const rows = {};
-  Object.values(w.people).forEach(p => (rows[p.gen] ||= []).push(p));
-  const gens = Object.keys(rows).map(Number), g0 = Math.min(...gens);
-  const pos = {};
-  let minX = Infinity, maxX = 0, maxY = 0;
-  for (const g of gens) {
-    let prev = -Infinity;
-    rows[g].sort((a,b) => a.key - b.key).forEach(p => {
-      const x = Math.max(p.key, prev + CW + GAP);
-      pos[p.id] = {x, y:(g-g0)*RH + 30}; prev = x;
-      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-    });
-    maxY = Math.max(maxY, (g-g0)*RH + 30 + CH);
+  const P = w.people, U = w.unions;
+  const byKey = (a, b) => P[a].key - P[b].key;
+  const adj = {}; Object.keys(P).forEach(id => adj[id] = []);
+  U.forEach(u => {
+    const ps = u.partners.filter(id => P[id]);
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++)
+      if (P[ps[i]].gen === P[ps[j]].gen) { adj[ps[i]].push(ps[j]); adj[ps[j]].push(ps[i]); }
+  });
+  const unitOf = {}, rows = {};
+  Object.keys(P).sort(byKey).forEach(id0 => {
+    if (unitOf[id0]) return;
+    const comp = [], seen = new Set([id0]), st = [id0];
+    while (st.length) { const x = st.pop(); comp.push(x); adj[x].forEach(y => { if (!seen.has(y)) { seen.add(y); st.push(y); } }); }
+    const ends = comp.filter(x => adj[x].length <= 1).sort(byKey), members = [], vis = new Set();
+    const walk = x => { if (vis.has(x)) return; vis.add(x); members.push(x); adj[x].slice().sort(byKey).forEach(walk); };
+    walk(ends[0] || comp.sort(byKey)[0]); comp.forEach(x => !vis.has(x) && members.push(x));
+    const un = {id:'U_' + id0, members, gen:P[id0].gen, key:avg(members.map(m => P[m].key))};
+    members.forEach(m => unitOf[m] = un);
+    (rows[un.gen] ||= []).push(un);
+  });
+  const gens = Object.keys(rows).map(Number).sort((a, b) => a - b), g0 = gens[0];
+  gens.forEach(g => rows[g].sort((a, b) => a.key - b.key));
+  const parentU = {}; U.forEach(u => u.children.forEach(c => { if (P[c]) parentU[c] = u; }));
+  const unionsOf = un => U.filter(u => u.partners.some(x => un.members.includes(x)) && u.children.some(c => P[c]));
+  const partnersIn = (u, g) => u.partners.filter(x => P[x] && P[x].gen === g);
+
+  /* --- 2. kolejność --- */
+  const idx = {};
+  const reindex = g => { let i = 0; rows[g].forEach(un => un.members.forEach(m => idx[m] = i++)); };
+  gens.forEach(reindex);
+  const anchorIdx = (u, g) => { const ps = partnersIn(u, g); return ps.length ? avg(ps.map(x => idx[x])) : null; };
+  const edges = g => {   // krawędzie między pokoleniem g a g+1: [pozycja rodziców, pozycja dziecka, związek]
+    const out = [];
+    U.forEach(u => { const a = anchorIdx(u, g); if (a === null) return; u.children.forEach(c => { if (P[c] && P[c].gen === g + 1) out.push([a, idx[c], u.id]); }); });
+    return out;
+  };
+  const crossings = g => {
+    const e = edges(g); let n = 0;
+    for (let i = 0; i < e.length; i++) for (let j = i + 1; j < e.length; j++)
+      if (e[i][2] !== e[j][2] && (e[i][0] - e[j][0]) * (e[i][1] - e[j][1]) < 0) n++;
+    return n;
+  };
+  const total = () => gens.reduce((s, g) => s + crossings(g), 0);
+  const sibCost = (un, g) => un.members.reduce((s, m) => {
+    const u = parentU[m]; if (!u) return s;
+    const sib = u.children.filter(c => c !== m && P[c] && P[c].gen === g);
+    return sib.length ? s + Math.abs(idx[m] - avg(sib.map(c => idx[c]))) : s;
+  }, 0);
+  const flipUnits = g => rows[g].forEach(un => {
+    if (un.members.length < 2) return;
+    const score = () => [(gens.includes(g - 1) ? crossings(g - 1) : 0) + crossings(g), sibCost(un, g)];
+    const a = score(); un.members.reverse(); reindex(g); const b = score();
+    if (b[0] > a[0] || (b[0] === a[0] && b[1] >= a[1])) { un.members.reverse(); reindex(g); }
+  });
+  const reorder = (g, bc) => {
+    const list = rows[g].map((un, i) => ({un, i, v:bc(un)}));
+    const mov = list.filter(x => x.v !== null).sort((a, b) => a.v - b.v || a.i - b.i);
+    let k = 0; rows[g] = list.map(x => x.v === null ? x.un : mov[k++].un);
+    reindex(g); flipUnits(g);
+  };
+  const downBC = g => un => {
+    const v = un.members.map(m => parentU[m] && anchorIdx(parentU[m], g - 1)).filter(x => x !== null && x !== undefined);
+    return v.length ? avg(v) : null;
+  };
+  const upBC = g => un => {
+    const v = unionsOf(un).flatMap(u => u.children.filter(c => P[c] && P[c].gen === g + 1).map(c => idx[c]));
+    return v.length ? avg(v) : null;
+  };
+  const snap = () => gens.map(g => rows[g].map(un => [un, un.members.slice()]));
+  let best = snap(), bestN = total();
+  for (let it = 0; it < 8 && bestN > 0; it++) {
+    gens.slice(1).forEach(g => reorder(g, downBC(g)));
+    gens.slice(0, -1).reverse().forEach(g => reorder(g, upBC(g)));
+    const n = total(); if (n < bestN) { bestN = n; best = snap(); }
   }
-  for (const id in pos) pos[id].x += 40 - minX;
-  return {pos, width: maxX - minX + CW + 80, height: maxY + 60};
+  gens.forEach((g, i) => { rows[g] = best[i].map(([un, ms]) => { un.members = ms; return un; }); reindex(g); });
+  // Dopracowanie: każdą jednostkę próbujemy postawić w każdym miejscu jej pokolenia i zostawiamy najlepsze.
+  // Najważniejsze są skrzyżowania; potem, żeby pod linią rodzeństwa stało jak najmniej obcych osób.
+  const intruders = g => {
+    let n = 0;
+    U.forEach(u => {
+      const ks = u.children.filter(c => P[c] && P[c].gen === g); if (ks.length < 2) return;
+      const lo = Math.min(...ks.map(c => idx[c])), hi = Math.max(...ks.map(c => idx[c]));
+      rows[g].forEach(un => { if (!un.members.some(m => ks.includes(m))) un.members.forEach(m => { if (idx[m] > lo && idx[m] < hi) n++; }); });
+    });
+    return n;
+  };
+  const localCost = g => ((gens.includes(g - 1) ? crossings(g - 1) : 0) + crossings(g)) * 1000 + intruders(g);
+  const sift = () => { for (let round = 0; round < 3; round++) {
+    let moved = false;
+    gens.forEach(g => {
+      rows[g].slice().forEach(un => {
+        const cur = rows[g].indexOf(un), rest = rows[g].filter(x => x !== un);
+        let bestI = cur, bestC = localCost(g);
+        for (let i = 0; i <= rest.length; i++) {
+          if (i === cur) continue;
+          rows[g] = [...rest.slice(0, i), un, ...rest.slice(i)]; reindex(g);
+          const c = localCost(g); if (c < bestC) { bestC = c; bestI = i; }
+        }
+        rows[g] = [...rest.slice(0, bestI), un, ...rest.slice(bestI)]; reindex(g);
+        if (bestI !== cur) moved = true;
+      });
+      flipUnits(g);
+    });
+    if (!moved) break;
+  } };
+  sift();
+  // Gdy nadal coś się krzyżuje: przesuwamy jednostkę razem z jej potomkami (niższe pokolenia układają się od nowa)
+  // i sprawdzamy całe drzewo. Kosztowne, więc tylko wtedy, gdy jest taka potrzeba.
+  if (total() > 0) {
+    const save = () => gens.map(g => rows[g].map(un => [un, un.members.slice()]));
+    const load = s => gens.forEach((g, i) => { rows[g] = s[i].map(([un, ms]) => { un.members = ms.slice(); return un; }); reindex(g); });
+    const fullCost = () => total() * 1000 + gens.reduce((s, g) => s + intruders(g), 0);
+    let bestS = save(), bestC = fullCost();
+    for (let round = 0; round < 2 && bestC >= 1000; round++) {
+      for (const g of gens) for (const un of rows[g].slice()) {
+        if (bestC < 1000) break;
+        const base = bestS, cur = rows[g].indexOf(un);
+        for (let i = 0; i < rows[g].length; i++) {
+          if (i === cur) continue;
+          load(base);
+          const rest = rows[g].filter(x => x !== un);
+          rows[g] = [...rest.slice(0, i), un, ...rest.slice(i)]; reindex(g); flipUnits(g);
+          gens.filter(x => x > g).forEach(x => reorder(x, downBC(x)));
+          gens.filter(x => x < g).reverse().forEach(x => reorder(x, upBC(x)));
+          const c = fullCost(); if (c < bestC) { bestC = c; bestS = save(); }
+        }
+        load(bestS);
+      }
+    }
+    load(bestS);
+    sift();
+  }
+
+  /* --- 3. położenie poziome --- */
+  const X = {};
+  gens.forEach(g => rows[g].forEach(un => un.w = un.members.length * CW + (un.members.length - 1) * GAP));
+  gens.forEach(g => { let x = 0; rows[g].forEach(un => { X[un.id] = x; x += un.w + UGAP; }); });
+  const cxOf = id => { const un = unitOf[id]; return X[un.id] + un.members.indexOf(id) * (CW + GAP) + CW / 2; };
+  const center = un => X[un.id] + un.w / 2;
+  const anchorX = (u, g) => avg(partnersIn(u, g).map(cxOf));
+  // ustawienie jednostek możliwie blisko pożądanych miejsc, z zachowaniem kolejności i odstępów (regresja izotoniczna)
+  const place = (g, want) => {
+    const r = rows[g]; let s = 0; const S = [], blocks = [];
+    r.forEach((un, i) => {
+      S.push(s); const [d, wt] = want[i];
+      blocks.push({v:d - un.w / 2 - s, w:wt, n:1}); s += un.w + UGAP;
+      while (blocks.length > 1 && blocks[blocks.length - 2].v > blocks[blocks.length - 1].v) {
+        const b = blocks.pop(), a = blocks.pop(), ww = a.w + b.w;
+        blocks.push({v:(a.v * a.w + b.v * b.w) / ww, w:ww, n:a.n + b.n});
+      }
+    });
+    let i = 0; blocks.forEach(b => { for (let k = 0; k < b.n; k++, i++) X[r[i].id] = b.v + S[i]; });
+  };
+  const wantDown = g => rows[g].map(un => {
+    const d = un.members.filter(m => parentU[m] && partnersIn(parentU[m], g - 1).length).map(m => anchorX(parentU[m], g - 1) - cxOf(m));
+    return d.length ? [center(un) + avg(d), d.length] : [center(un), 0.05];
+  });
+  const wantUp = g => rows[g].map(un => {
+    const d = unionsOf(un).map(u => { const ks = u.children.filter(c => P[c] && P[c].gen === g + 1); return ks.length ? avg(ks.map(cxOf)) - anchorX(u, g) : null; }).filter(v => v !== null);
+    return d.length ? [center(un) + avg(d), d.length] : [center(un), 0.05];
+  });
+  for (let it = 0; it < 6; it++) {
+    gens.slice(1).forEach(g => place(g, wantDown(g)));
+    gens.slice(0, -1).reverse().forEach(g => place(g, wantUp(g)));
+  }
+  gens.slice(1).forEach(g => place(g, wantDown(g)));
+
+  const pos = {};
+  let minX = Infinity, maxX = -Infinity;
+  Object.keys(P).forEach(id => { const x = cxOf(id) - CW / 2; pos[id] = {x, y:(P[id].gen - g0) * RH + 30}; minX = Math.min(minX, x); maxX = Math.max(maxX, x); });
+  Object.values(pos).forEach(p => p.x += 40 - minX);
+
+  /* --- 4. wysokości poziomych linii rodzeństwa --- */
+  const bus = {};
+  gens.forEach(g => {
+    const spans = U.map(u => {
+      const ps = partnersIn(u, g), ks = u.children.filter(c => P[c] && P[c].gen === g + 1);
+      if (!ks.length || (!ps.length && g !== P[ks[0]].gen - 1)) return null;
+      const xs = ks.map(c => pos[c].x + CW / 2).concat(ps.length ? [avg(ps.map(x => pos[x].x + CW / 2))] : []);
+      return {u, lo:Math.min(...xs), hi:Math.max(...xs)};
+    }).filter(Boolean).sort((a, b) => a.lo - b.lo);
+    const ends = [];
+    spans.forEach(s => {
+      let lv = ends.findIndex(e => e < s.lo - 16); if (lv < 0) { lv = ends.length; ends.push(0); }
+      ends[lv] = s.hi; bus[s.u.id] = (g + 1 - g0) * RH + 30 - 22 - lv * 14;
+    });
+  });
+  return {pos, bus, crossings:total(), width:maxX - minX + CW + 80, height:(gens[gens.length - 1] - g0) * RH + 30 + CH + 60};
 }
+let layoutMemo = {sig:'', L:null};
 function treeHTML(){
-  const w = W, L = layout(w), P = L.pos; TL = L;
+  const w = W;
+  const sig = JSON.stringify([w.unions, Object.values(w.people).map(p => [p.id, p.gen, p.key])]);
+  if (layoutMemo.sig !== sig) layoutMemo = {sig, L:layout(w)};
+  const L = layoutMemo.L, P = L.pos; TL = L;
   let lines = '', marks = '';
   w.unions.forEach((u, i) => {
     const ps = u.partners.filter(id => P[id]), ks = u.children.filter(id => P[id]);
@@ -547,11 +731,11 @@ function treeHTML(){
     } else if (ps.length === 1) { ax = cx(ps[0]); ay = P[ps[0]].y + CH; }
     if (!ks.length) return;
     const ky = Math.min(...ks.map(id => P[id].y));
-    const by = ky - 26 - (i % 3) * 7;
+    const by = L.bus[u.id] ?? ky - 26;
     const xs = ks.map(cx);
     if (ax === undefined) { ax = (Math.min(...xs) + Math.max(...xs)) / 2; ay = by; }
     const lo = Math.min(ax, ...xs), hi = Math.max(ax, ...xs);
-    lines += `<path d="M${ax} ${ay+ (ps.length===2?12:0)} V${by} M${lo} ${by} H${hi} ${xs.map(x => `M${x} ${by} V${ky}`).join(' ')}" fill="none" stroke="#5c5548" stroke-width="2.5"/>`;
+    lines += `<path data-u="${u.id}" d="M${ax} ${ay+ (ps.length===2?12:0)} V${by} M${lo} ${by} H${hi} ${xs.map(x => `M${x} ${by} V${ky}`).join(' ')}" fill="none" stroke="#5c5548" stroke-width="2.5"/>`;
   });
   const cards = Object.values(w.people).map(p => {
     const {x,y} = P[p.id];
