@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drzewo rodziny</title>
+<meta name="theme-color" content="#2e6a4f">
+<meta name="apple-mobile-web-app-title" content="Drzewo">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🌳%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f6f3ec; --card:#fff; --ink:#1d2433; --muted:#566072; --line:#d6cfc2; --soft:#efeae0;
+  --accent:#2e6a4f; --accent-2:#245a42; --accent-soft:#e3efe8;
+  --pend:#8a5300; --pend-bg:#fff2d6; --pend-line:#e0a84a;
+  --danger:#b42318; --danger-soft:#fdecea;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+button,input,textarea,select{font:inherit;color:inherit}
+h1,h2,h3{line-height:1.25;margin:0}
+a{color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:3px solid #1d6fd8;outline-offset:2px}
+
+/* przyciski */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 18px;border-radius:12px;border:2px solid var(--accent);background:var(--card);color:var(--accent);font-weight:650;cursor:pointer;text-align:center}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-2)}
+.btn.ghost{border-color:var(--line);color:var(--ink)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.block{width:100%}
+.btn.sm{min-height:40px;padding:6px 12px;font-size:15px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1 1 140px}
+
+
+/* nagłówek */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:25;background:#2e6a4f}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--accent);color:#fff;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top h1{font-size:19px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{min-width:48px;min-height:48px;border-radius:12px;border:0;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-weight:600}
+.iconbtn:hover{background:rgba(255,255,255,.24)}
+
+/* układ */
+.layout{display:block}
+.pane{display:none}
+.pane.on{display:block}
+main{padding-bottom:84px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;min-height:64px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;color:var(--muted);font-weight:600;position:relative}
+nav.tabs button svg{width:26px;height:26px}
+nav.tabs button[aria-current=page]{color:var(--accent)}
+nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;left:20%;right:20%;height:3px;background:var(--accent);border-radius:0 0 3px 3px}
+.count{background:var(--danger);color:#fff;border-radius:999px;font-size:12px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
+
+@media (min-width:1000px){
+  main{padding-bottom:0}
+  nav.tabs{display:none}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 460px;height:calc(100vh - var(--hdr,110px));overflow:hidden}
+  .pane.tree{display:block;border-right:1px solid var(--line);min-height:0;min-width:0;position:relative;overflow:hidden}
+  .pane.tree .treewrap{position:absolute;inset:0}
+  .pane.side{display:block;overflow:auto}
+  .pane.side>.inner{display:none}
+  .pane.side>.inner.on{display:block}
+  .desk-only{display:inline-flex!important}
+  .legend{display:flex}
+}
+.desk-only{display:none!important}
+
+/* osoba */
+.wrap{max-width:640px;margin:0 auto;padding-block:14px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.section{margin-top:22px}
+.section>h2{font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 8px;font-weight:700}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;scroll-snap-type:x proximity}
+.mini{flex:0 0 auto;scroll-snap-align:start;display:flex;align-items:center;gap:10px;min-height:64px;padding:8px 14px 8px 8px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);cursor:pointer;text-align:left;max-width:280px}
+.mini:hover{border-color:var(--accent)}
+.mini .nm{font-weight:650;line-height:1.25}
+.mini .yr{font-size:14px;color:var(--muted)}
+.mini.add{border-style:dashed;color:var(--accent);font-weight:650;justify-content:center;padding:8px 16px}
+.mini.pending{border:2px dashed var(--pend-line);background:var(--pend-bg)}
+.av{flex:0 0 auto;border-radius:50%;overflow:hidden;background:var(--soft);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted);border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av.s{width:48px;height:48px;font-size:17px}
+.av.l{width:132px;height:132px;font-size:40px}
+.av.dead{filter:grayscale(.35)}
+
+.hero{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;text-align:center;margin-top:14px}
+.hero.pending{border:2px dashed var(--pend-line)}
+.hero .av{margin:0 auto 10px}
+.hero h1{font-size:25px}
+.hero .sub{color:var(--muted);margin-top:4px}
+.hero .actions{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hero .actions .wide{grid-column:1/-1}
+.hero .actions.one{grid-template-columns:1fr}
+.avbtn{border:0;background:none;padding:0;cursor:pointer;position:relative;display:inline-block;border-radius:50%}
+.avbtn:hover .av{box-shadow:0 0 0 3px var(--accent)}
+.avedit{position:absolute;right:2px;bottom:12px;width:42px;height:42px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.crop{position:relative;width:min(100%,320px);aspect-ratio:1;max-width:100%;margin:0 auto;overflow:hidden;border-radius:16px;background:#2a2f3a;touch-action:none;cursor:grab;user-select:none}
+.crop img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;pointer-events:none}
+.crop::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 999px rgba(20,24,32,.55);border:2px solid rgba(255,255,255,.85);pointer-events:none}
+.zoomrow{display:flex;align-items:center;gap:12px;max-width:320px;margin:14px auto 0}
+.zoomrow input{flex:1;min-width:0;accent-color:var(--accent);height:32px}
+.btn.sq{width:52px;flex:0 0 52px;padding:0;font-size:24px}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--pend-bg);color:var(--pend);border:1px solid var(--pend-line);border-radius:999px;padding:3px 10px;font-size:14px;font-weight:650;margin-top:8px}
+.badge.del{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.hint{background:var(--accent-soft);border-radius:var(--r);padding:12px 14px;margin-top:14px}
+.pchip{font-size:13px;color:var(--pend);font-weight:650;white-space:nowrap}
+
+dl.facts{margin:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+dl.facts>div{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:11px 14px;border-top:1px solid var(--soft)}
+dl.facts>div:first-child{border-top:0}
+dl.facts dt{color:var(--muted)}
+dl.facts dd{margin:0;white-space:pre-wrap;word-break:break-word}
+dl.facts .pend{background:var(--pend-bg)}
+@media (max-width:420px){dl.facts>div{grid-template-columns:1fr;gap:0}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--soft);border-radius:999px;padding:3px 11px;font-size:15px}
+.note{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;white-space:pre-wrap}
+.note.empty{color:var(--muted);font-style:italic}
+.note.pend{background:var(--pend-bg);border:2px dashed var(--pend-line)}
+
+/* drzewo */
+.treebox{position:relative;height:calc(100vh - var(--hdr,110px) - 64px);overflow:auto;background:
+  radial-gradient(circle at 1px 1px,#e2dccf 1px,transparent 0) 0 0/22px 22px, var(--bg);cursor:grab;touch-action:pan-x pan-y}
+@media (min-width:1000px){.treebox{height:100%}}
+.treebox.drag{cursor:grabbing}
+.zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:5}
+.treewrap{position:relative;height:100%}
+.zoom button{width:52px;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:26px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.legend{position:absolute;left:12px;bottom:12px;z-index:5;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:14px;display:none;gap:12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
+svg.tree text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+svg.tree .card{cursor:pointer}
+svg.tree .card:hover rect.bg{stroke:var(--accent);stroke-width:2}
+svg.tree .card:focus{outline:none}
+svg.tree .card:focus rect.bg{stroke:#1d6fd8;stroke-width:3}
+
+/* arkusz (formularze) */
+.sheet-bg{position:fixed;inset:0;background:rgba(20,24,32,.5);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:600px;max-height:94vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden}
+@media (min-width:700px){.sheet-bg{align-items:center}.sheet{border-radius:20px;max-height:90vh}}
+.sheet>header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+.sheet>header h2{flex:1;font-size:20px}
+.sheet>header button{min-width:48px;min-height:48px;border:0;background:var(--soft);border-radius:12px;font-size:22px;cursor:pointer}
+.sheet .body{padding:16px;overflow:auto;flex:1}
+.sheet .foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);display:flex;gap:10px}
+.sheet .foot .btn{flex:1}
+
+.field{margin-bottom:16px}
+.field label,.field .lbl{display:block;font-weight:650;margin-bottom:6px}
+.field .help{font-size:14px;color:var(--muted);margin-top:4px}
+input[type=text],input[type=password],input[type=search],textarea{width:100%;min-height:52px;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:var(--card);font-size:17px}
+textarea{min-height:140px;resize:vertical;line-height:1.45}
+input:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+fieldset{border:0;margin:0 0 6px;padding:0}
+legend{font-size:18px;font-weight:700;margin:6px 0 12px;padding:0}
+.group{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 2px;margin-bottom:14px}
+.choices{display:flex;gap:8px;flex-wrap:wrap}
+.choice{position:relative;flex:1 1 30%}
+.choice input{position:absolute;opacity:0;inset:0}
+.choice span{display:flex;align-items:center;justify-content:center;min-height:52px;padding:6px 10px;border:2px solid var(--line);border-radius:12px;background:var(--card);font-weight:600;text-align:center;cursor:pointer}
+.choice input:checked+span{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-2)}
+.choice input:focus-visible+span{outline:3px solid #1d6fd8;outline-offset:2px}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+@media (max-width:420px){.checks{grid-template-columns:1fr}}
+.check{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 12px;border:2px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;font-weight:550}
+.check input{width:24px;height:24px;accent-color:var(--accent);flex:0 0 auto}
+.check:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+details.more{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+details.more summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;align-items:center}
+.relpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.relpick button{min-height:96px;border:2px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px}
+.relpick button:hover{border-color:var(--accent)}
+.relpick b{font-size:19px}
+.relpick small{color:var(--muted);font-size:14px}
+.relpick button:disabled{opacity:.4;cursor:not-allowed}
+.listpick{display:flex;flex-direction:column;gap:10px}
+.listpick .mini{max-width:none;width:100%}
+
+/* zatwierdzanie */
+.chg{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.chg h3{font-size:18px}
+.chg .meta{color:var(--muted);font-size:14px;margin:2px 0 10px}
+.diff{border-top:1px solid var(--soft);padding:10px 0}
+.diff .lbl{font-weight:650}
+.diff .was{color:var(--muted);font-size:15px;margin:2px 0 6px;white-space:pre-wrap}
+.diff .was s{color:#8a8f99}
+.conflict{background:var(--pend-bg);border:1px solid var(--pend-line);border-radius:10px;padding:8px 10px;font-size:15px;margin-top:6px}
+.imgcmp{display:flex;gap:14px;align-items:center}
+.empty-state{text-align:center;color:var(--muted);padding:40px 10px}
+.hist{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--soft)}
+.hist div{flex:1}
+.hist small{color:var(--muted)}
+
+/* wyszukiwanie */
+.results{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.results .mini{max-width:none;width:100%}
+
+/* toast */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:200;background:#1d2433;color:#fff;border-radius:14px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100% - 24px);width:max-content}
+@media (min-width:1000px){.toast{bottom:24px}}
+.toast button{background:#fff;color:#1d2433;border:0;border-radius:10px;min-height:44px;padding:0 14px;font-weight:700;cursor:pointer}
+
+/* hasło */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.gate .box{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 22px;max-width:420px;width:100%;text-align:center}
+.gate h1{font-size:26px;margin:10px 0 6px}
+.gate p{color:var(--muted);margin:0 0 18px}
+.gate form{text-align:left}
+.err{color:var(--danger);font-weight:600;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ---------- konfiguracja (adres i klucz publiczny Supabase) ---------- */
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_KEY = 'sb_publishable_kr29qUkETgumRNq9jYY6MQ_Q3Z2vGna';
+const LS = 'drzewo-v1';
+const START = 'p_pau';
+
+/* ---------- stan ---------- */
+function defState(){ return {pw:'', device:'', author:'', focus:START, view:'person', zoom:matchMedia('(min-width:1000px)').matches ? 0.8 : 0.6} }
+let S = (() => { try { return Object.assign(defState(), JSON.parse(localStorage.getItem(LS) || '{}')) } catch(e) { return defState() } })();
+function save(){ try { localStorage.setItem(LS, JSON.stringify(S)) } catch(e) { toast('Nie udało się zapisać – za mało miejsca w przeglądarce.') } }
+const uid = () => Math.random().toString(36).slice(2, 9);
+if (!S.device) { S.device = uid() + uid() + uid(); save(); }
+let DATA = null;          // {role, base, changes} z serwera
+const PHOTOS = {};        // 'ph:<id>' -> data URL
+let inflight = 0;
+const isAdmin = () => DATA?.role === 'admin';
+
+/* ---------- serwer ---------- */
+async function rpc(fn, args){
+  const h = {'Content-Type':'application/json', apikey:SUPABASE_KEY};
+  if (SUPABASE_KEY.startsWith('eyJ')) h.Authorization = 'Bearer ' + SUPABASE_KEY;
+  let res;
+  inflight++;
+  try { res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {method:'POST', headers:h, body:JSON.stringify(args)}); }
+  catch(e) { throw new Error('offline'); }
+  finally { inflight--; }
+  const txt = await res.text();
+  if (!res.ok) { let m = ''; try { m = JSON.parse(txt).message } catch(e) {} throw new Error(m || 'http_' + res.status); }
+  return txt ? JSON.parse(txt) : null;
+}
+function errText(e){
+  if (e.message === 'offline') return 'Brak połączenia z internetem. Spróbuj jeszcze raz.';
+  if (e.message === 'bad_password') return 'Hasło się zmieniło. Zaloguj się ponownie.';
+  return 'Coś poszło nie tak. Spróbuj jeszcze raz za chwilę.';
+}
+async function refresh(){ DATA = await rpc('tree_load', {p_pw:S.pw, p_device:S.device}); }
+async function softRefresh(){
+  if (!DATA || inflight || document.querySelector('.sheet-bg')) return;
+  const a = document.activeElement;
+  if (a && a.closest?.('#app') && /INPUT|TEXTAREA/.test(a.tagName)) return;
+  const old = JSON.stringify(DATA.changes);
+  try { await refresh(); } catch(e) { return; }
+  if (JSON.stringify(DATA.changes) !== old) render();
+}
+setInterval(softRefresh, 60000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') softRefresh(); });
+
+/* zdjęcia z bazy: pole zdjęcia to 'ph:<id>', ładujemy je w paczkach */
+let phQ = new Set(), phT;
+function ph(v){
+  if (!v) return '';
+  if (!v.startsWith('ph:')) return v;
+  if (PHOTOS[v]) return PHOTOS[v];
+  if (PHOTOS[v] === undefined) { phQ.add(v); clearTimeout(phT); phT = setTimeout(fetchPhotos, 30); }
+  return '';
+}
+async function fetchPhotos(){
+  const ids = [...phQ]; phQ.clear(); ids.forEach(v => PHOTOS[v] = null);
+  for (let i = 0; i < ids.length; i += 15) {
+    const part = ids.slice(i, i + 15);
+    try { const r = await rpc('tree_photos', {p_pw:S.pw, p_ids:part.map(v => v.slice(3))}); part.forEach(v => PHOTOS[v] = r[v.slice(3)] || ''); }
+    catch(e) { part.forEach(v => delete PHOTOS[v]); }
+  }
+  render();
+}
+async function getPhoto(v){
+  if (!v || !v.startsWith('ph:') || PHOTOS[v]) return ph(v);
+  const r = await rpc('tree_photos', {p_pw:S.pw, p_ids:[v.slice(3)]});
+  return PHOTOS[v] = r[v.slice(3)] || '';
+}
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');
+
+const FIELDS = {first:'Imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
+const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
+const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
+const REL = {child:'dziecko',parent:'rodzic',partner:'partner(ka)',sibling:'rodzeństwo'};
+const blank = () => ({first:'',last:'',maiden:'',nick:'',gender:'',born:'',bornPlace:'',dead:false,died:'',diedPlace:'',deathCause:'',burial:'',job:'',lived:'',health:[],cancerType:'',healthNotes:'',note:'',photo:''});
+
+/* ---------- budowanie drzewa z danych + zmian ---------- */
+function build(withPending){
+  const w = {people:{}, unions:clone(DATA.base.unions), flags:{add:new Set(), fields:{}, del:new Set()}};
+  for (const [id,p] of Object.entries(DATA.base.people)) w.people[id] = Object.assign(blank(), clone(p));
+  DATA.changes.filter(c => c.status==='approved').sort((a,b) => a.aseq-b.aseq).forEach(c => apply(w,c,false));
+  if (withPending) DATA.changes.filter(c => c.status==='pending').sort((a,b) => a.ts-b.ts).forEach(c => apply(w,c,true));
+  return w;
+}
+function apply(w, c, pending){
+  const P = w.people;
+  if (c.kind === 'edit') {
+    const p = P[c.pid]; if (!p) return;
+    Object.assign(p, clone(c.fields));
+    if (pending) { const s = w.flags.fields[c.pid] ||= new Set(); Object.keys(c.fields).forEach(k => s.add(k)); }
+  } else if (c.kind === 'add') {
+    const of = P[c.rel.of]; if (!of) return;
+    const np = Object.assign(blank(), clone(c.person), {id:c.newId});
+    const U = w.unions, t = c.rel.type, nu = 'u_'+c.id;
+    const keyOf = id => P[id] ? P[id].key : of.key;
+    if (t === 'partner') {
+      U.push({id:nu, partners:[of.id, np.id], children:[]}); np.gen = of.gen; np.key = of.key + 1;
+    } else if (t === 'child') {
+      let u = c.rel.union && U.find(x => x.id === c.rel.union);
+      if (!u) { u = {id:nu, partners:[of.id], children:[]}; U.push(u); }
+      np.gen = of.gen + 1;
+      np.key = u.children.length ? Math.max(...u.children.map(keyOf)) + 1 : u.partners.reduce((s,id) => s + keyOf(id), 0) / u.partners.length;
+      u.children.push(np.id);
+    } else if (t === 'parent') {
+      let u = U.find(x => x.children.includes(of.id));
+      np.gen = of.gen - 1;
+      if (!u) { U.push({id:nu, partners:[np.id], children:[of.id]}); np.key = of.key; }
+      else if (u.partners.length < 2) { np.key = u.partners.length ? keyOf(u.partners[0]) + 1 : of.key; u.partners.push(np.id); }
+      else return;
+    } else if (t === 'sibling') {
+      let u = U.find(x => x.children.includes(of.id));
+      if (!u) { u = {id:nu, partners:[], children:[of.id]}; U.push(u); }
+      np.gen = of.gen; np.key = Math.max(...u.children.map(keyOf)) + 1;
+      u.children.push(np.id);
+    }
+    P[np.id] = np;
+    if (pending) w.flags.add.add(np.id);
+  } else if (c.kind === 'delete') {
+    if (!P[c.pid]) return;
+    if (pending) { w.flags.del.add(c.pid); return; }
+    delete P[c.pid];
+    w.unions.forEach(u => { u.partners = u.partners.filter(x => x!==c.pid); u.children = u.children.filter(x => x!==c.pid); });
+    w.unions = w.unions.filter(u => u.partners.length + u.children.length >= 2);
+  }
+}
+
+/* ---------- relacje ---------- */
+const parentUnion = (w,id) => w.unions.find(u => u.children.includes(id));
+const parentsOf = (w,id) => { const u = parentUnion(w,id); return u ? u.partners.slice() : []; };
+const partnerUnions = (w,id) => w.unions.filter(u => u.partners.includes(id));
+const partnersOf = (w,id) => partnerUnions(w,id).flatMap(u => u.partners.filter(x => x!==id).map(x => ({id:x, union:u})));
+const childrenOf = (w,id) => [...new Set(partnerUnions(w,id).flatMap(u => u.children))];
+const siblingsOf = (w,id) => { const u = parentUnion(w,id); return u ? u.children.filter(x => x!==id) : []; };
+
+/* ---------- prezentacja ---------- */
+function fullName(p){
+  if (!p) return 'Osoba usunięta';
+  if (!p.first && !p.last && !p.maiden) return 'Osoba nieznana';
+  const parts = [p.first || '(imię nieznane)'];
+  if (p.maiden && p.maiden !== p.last) parts.push('('+p.maiden+')');
+  if (p.last) parts.push(p.last);
+  return parts.join(' ');
+}
+function shortName(p){
+  if (!p) return '?';
+  if (!p.first && !p.last && !p.maiden) return 'Nieznana osoba';
+  return [p.first || '?', p.last || p.maiden].filter(Boolean).join(' ');
+}
+function years(p){
+  const a = [];
+  if (p.born) a.push('ur. ' + p.born);
+  if (p.dead) a.push(p.died ? '† ' + p.died : '†');
+  return a.join('  ·  ');
+}
+function initials(p){
+  if (!p.first && !p.last) return '?';
+  return ((p.first||'')[0]||'') + ((p.last||p.maiden||'')[0]||'');
+}
+function avatar(p, size){
+  const cls = 'av ' + size + (p.dead ? ' dead' : '');
+  const s = ph(p.photo);
+  return s ? `<span class="${cls}"><img src="${s}" alt=""></span>` : `<span class="${cls}" aria-hidden="true">${esc(initials(p))}</span>`;
+}
+function relWord(w, id, type){
+  const g = w.people[id]?.gender;
+  return {parent:{K:'Mama',M:'Tata'}, partner:{K:'Żona / partnerka',M:'Mąż / partner'}, child:{K:'Córka',M:'Syn'}, sibling:{K:'Siostra',M:'Brat'}}[type][g] || '';
+}
+function miniCard(w, id, extra=''){
+  const p = w.people[id]; if (!p) return '';
+  const pend = w.flags.add.has(id) || w.flags.fields[id] || w.flags.del.has(id);
+  return `<button class="mini${w.flags.add.has(id)?' pending':''}" data-go="${id}">
+    ${avatar(p,'s')}<span><span class="nm">${esc(shortName(p))}</span><br>
+    <span class="yr">${esc(years(p) || extra || ' ')}</span>${pend?'<br><span class="pchip">⏳ czeka na zatwierdzenie</span>':''}</span></button>`;
+}
+function timeAgo(ts){
+  const m = Math.round((Date.now()-ts)/60000);
+  if (m < 1) return 'przed chwilą';
+  if (m < 60) return m + ' min temu';
+  if (m < 60*24) return Math.round(m/60) + ' godz. temu';
+  return new Date(ts).toLocaleDateString('pl-PL');
+}
+
+/* ---------- render ---------- */
+const app = document.getElementById('app');
+let W;
+const wide = matchMedia('(min-width:1000px)');
+wide.addEventListener('change', () => render());
+
+function pendingCount(){ return DATA.changes.filter(c => c.status==='pending').length }
+
+function render(){
+  if (!S.pw || !DATA) return renderGate();
+  if (!DATA.base) { app.innerHTML = `<div class="gate"><div class="box"><h1>Drzewo jest puste</h1><p>W bazie nie ma jeszcze danych drzewa.</p></div></div>`; return; }
+  W = build(!isAdmin());
+  if (!W.people[S.focus]) S.focus = W.people[START] ? START : Object.keys(W.people)[0];
+  const n = pendingCount();
+  const prevScroll = document.querySelector('.treebox') && {l:document.querySelector('.treebox').scrollLeft, t:document.querySelector('.treebox').scrollTop};
+  if (S.view === 'inbox' && !isAdmin()) S.view = 'person';
+  app.innerHTML = `
+  <header class="top">
+    <h1>🌳 Drzewo rodziny</h1>
+    <button class="iconbtn" data-act="search" aria-label="Szukaj osoby">${ICON.search}<span>Szukaj</span></button>
+    ${isAdmin() ? `<button class="iconbtn desk-only" data-act="inbox">Zmiany ${n?`<span class="count">${n}</span>`:''}</button>` : ''}
+    <button class="iconbtn" data-act="menu" aria-label="Więcej">⋯</button>
+  </header>
+  <main class="layout">
+    <section class="pane tree ${S.view==='tree'?'on':''}" aria-label="Całe drzewo">${treeHTML()}</section>
+    <section class="pane side ${S.view!=='tree'?'on':''}">
+      <div class="inner ${S.view!=='inbox'?'on':''}" ${S.view==='inbox'&&!wide.matches?'hidden':''}>${personHTML(S.focus)}</div>
+      <div class="inner ${S.view==='inbox'?'on':''}" ${S.view!=='inbox'?'hidden':''}>${isAdmin() ? inboxHTML() : ''}</div>
+    </section>
+  </main>
+  <nav class="tabs" aria-label="Główne">
+    <button data-view="person" ${S.view==='person'?'aria-current="page"':''}>${ICON.person}Osoba</button>
+    <button data-view="tree" ${S.view==='tree'?'aria-current="page"':''}>${ICON.tree}Całe drzewo</button>
+    ${isAdmin() ? `<button data-view="inbox" ${S.view==='inbox'?'aria-current="page"':''}>${ICON.inbox}Do zatwierdzenia${n?`<span class="count">${n}</span>`:''}</button>` : ''}
+  </nav>`;
+  const hdr = document.querySelector('header.top').offsetHeight;
+  document.documentElement.style.setProperty('--hdr', hdr + 'px');
+  // na szerokim ekranie oba panele widoczne
+  if (wide.matches) { document.querySelector('.pane.side').hidden = false; }
+  setupTree(prevScroll);
+}
+
+const ICON = {
+  search:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  tree:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 7v4M5 16v-3h14v3"/></svg>',
+  inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l1 8v6H4v-6z"/></svg>',
+};
+
+/* ---------- widok osoby ---------- */
+function personHTML(id){
+  const w = W, p = w.people[id];
+  const pf = w.flags.fields[id] || new Set();
+  const isAddPend = w.flags.add.has(id), isDelPend = w.flags.del.has(id);
+  const parents = parentsOf(w,id), partners = partnersOf(w,id), kids = childrenOf(w,id), sibs = siblingsOf(w,id);
+  const unknown = !p.first && !p.last && !p.maiden;
+  const sub = [p.nick && '„'+p.nick+'”', years(p)].filter(Boolean).join('  ·  ');
+  const f = (k, v) => v ? `<div class="${pf.has(k)?'pend':''}"><dt>${FIELDS[k]}</dt><dd>${esc(v)}${pf.has(k)?' <span class="pchip">⏳</span>':''}</dd></div>` : '';
+  const health = (p.health||[]).map(h => `<span class="chip">${esc(HEALTH[h])}</span>`).join('');
+  const facts = [
+    f('born', p.born), f('bornPlace', p.bornPlace),
+    p.dead ? f('died', p.died || 'nieznana') : '', f('diedPlace', p.diedPlace), f('deathCause', p.deathCause), f('burial', p.burial),
+    f('job', p.job), f('lived', p.lived), f('gender', GENDER[p.gender] && p.gender ? GENDER[p.gender] : ''),
+  ].join('');
+  const hasHealth = health || p.cancerType || p.healthNotes;
+  return `<div class="wrap">
+    <div class="section" style="margin-top:4px">
+      <h2>Rodzice</h2>
+      <div class="strip">${parents.map(x => miniCard(w,x,relWord(w,x,'parent'))).join('')}
+        ${parents.length < 2 ? `<button class="mini add" data-add="parent" aria-label="Dodaj rodzica">＋ Dodaj</button>` : ''}</div>
+    </div>
+    <article class="hero ${isAddPend?'pending':''}" aria-labelledby="pname">
+      ${p.photo ? `<button class="avbtn" data-act="photoedit" aria-label="Zmień lub wykadruj zdjęcie">${avatar(p,'l')}<span class="avedit" aria-hidden="true">✏️</span></button>` : avatar(p,'l')}
+      <h1 id="pname">${esc(fullName(p))}</h1>
+      ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}
+      ${isAddPend ? `<div class="badge">⏳ Nowa osoba – czeka na zatwierdzenie</div>` : ''}
+      ${!isAddPend && pf.size ? `<div class="badge">⏳ Twoje zmiany czekają na zatwierdzenie</div>` : ''}
+      ${isDelPend ? `<div class="badge del">⏳ Zgłoszono do usunięcia</div>` : ''}
+      <div class="actions ${p.photo?'one':''}">
+        <button class="btn primary" data-act="edit">✏️ Edytuj dane</button>
+        ${p.photo ? '' : `<label class="btn">📷 Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-act="photo"></label>`}
+      </div>
+    </article>
+    ${unknown ? `<div class="hint">Nie znamy jeszcze danych tej osoby. <b>Wiesz coś?</b> Kliknij „Edytuj dane”.</div>` : ''}
+    <div class="section"><h2>${partners.length > 1 ? 'Partnerzy' : 'Partner / partnerka'}</h2>
+      <div class="strip">${partners.map(x => miniCard(w, x.id, (x.union.status==='rozstanie'?'💔 rozstanie':'♥ '+relWord(w,x.id,'partner')))).join('')}
+      <button class="mini add" data-add="partner" aria-label="Dodaj partnera lub partnerkę">＋ Dodaj</button></div></div>
+    <div class="section"><h2>Dzieci</h2>
+      <div class="strip">${kids.map(x => miniCard(w,x,relWord(w,x,'child'))).join('')}
+      <button class="mini add" data-add="child" aria-label="Dodaj dziecko">＋ Dodaj</button></div></div>
+    <div class="section"><h2>Rodzeństwo</h2>
+      <div class="strip">${sibs.map(x => miniCard(w,x,relWord(w,x,'sibling'))).join('')}
+      <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">＋ Dodaj</button></div></div>
+    ${facts ? `<div class="section"><h2>Informacje</h2><dl class="facts">${facts}</dl></div>` : ''}
+    ${hasHealth ? `<div class="section"><h2>Zdrowie</h2><dl class="facts">
+        ${health ? `<div class="${pf.has('health')?'pend':''}"><dt>Choroby</dt><dd><span class="chips">${health}</span></dd></div>` : ''}
+        ${f('cancerType', p.cancerType)}${f('healthNotes', p.healthNotes)}</dl></div>` : ''}
+    <div class="section"><h2>Notatka ${pf.has('note')?'<span class="pchip">⏳ czeka na zatwierdzenie</span>':''}</h2>
+      <div class="note ${p.note?'':'empty'} ${pf.has('note')?'pend':''}">${p.note ? esc(p.note) : 'Brak notatki. Znasz jakąś historię? Zapisz ją!'}</div>
+      <div style="margin-top:10px"><button class="btn block" data-act="note">📝 ${p.note ? 'Edytuj notatkę' : 'Dodaj notatkę'}</button></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- całe drzewo ---------- */
+const CW = 136, CH = 156, GAP = 34, RH = 236;
+let TL = null;
+function layout(w){
+  const rows = {};
+  Object.values(w.people).forEach(p => (rows[p.gen] ||= []).push(p));
+  const gens = Object.keys(rows).map(Number), g0 = Math.min(...gens);
+  const pos = {};
+  let minX = Infinity, maxX = 0, maxY = 0;
+  for (const g of gens) {
+    let prev = -Infinity;
+    rows[g].sort((a,b) => a.key - b.key).forEach(p => {
+      const x = Math.max(p.key, prev + CW + GAP);
+      pos[p.id] = {x, y:(g-g0)*RH + 30}; prev = x;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    });
+    maxY = Math.max(maxY, (g-g0)*RH + 30 + CH);
+  }
+  for (const id in pos) pos[id].x += 40 - minX;
+  return {pos, width: maxX - minX + CW + 80, height: maxY + 60};
+}
+function treeHTML(){
+  const w = W, L = layout(w), P = L.pos; TL = L;
+  let lines = '', marks = '';
+  w.unions.forEach((u, i) => {
+    const ps = u.partners.filter(id => P[id]), ks = u.children.filter(id => P[id]);
+    let ax, ay;
+    const cy = id => P[id].y + 46, cx = id => P[id].x + CW/2;
+    if (ps.length === 2) {
+      const [a,b] = ps.map(cx).sort((m,n) => m-n), y = cy(ps[0]);
+      const div = u.status === 'rozstanie';
+      lines += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="#5c5548" stroke-width="2.5" ${div?'stroke-dasharray="7 6"':''}/>`;
+      ax = (a+b)/2; ay = y;
+      marks += `<text x="${ax}" y="${y+7}" text-anchor="middle" font-size="20" aria-hidden="true">${div?'💔':'❤️'}</text>`;
+    } else if (ps.length === 1) { ax = cx(ps[0]); ay = P[ps[0]].y + CH; }
+    if (!ks.length) return;
+    const ky = Math.min(...ks.map(id => P[id].y));
+    const by = ky - 26 - (i % 3) * 7;
+    const xs = ks.map(cx);
+    if (ax === undefined) { ax = (Math.min(...xs) + Math.max(...xs)) / 2; ay = by; }
+    const lo = Math.min(ax, ...xs), hi = Math.max(ax, ...xs);
+    lines += `<path d="M${ax} ${ay+ (ps.length===2?12:0)} V${by} M${lo} ${by} H${hi} ${xs.map(x => `M${x} ${by} V${ky}`).join(' ')}" fill="none" stroke="#5c5548" stroke-width="2.5"/>`;
+  });
+  const cards = Object.values(w.people).map(p => {
+    const {x,y} = P[p.id];
+    const pend = w.flags.add.has(p.id), fpend = !!w.flags.fields[p.id], del = w.flags.del.has(p.id), on = p.id === S.focus;
+    const r = 40, cx = x + CW/2, cy = y + 46;
+    const n1 = p.first || (p.last || p.maiden ? '?' : 'Nieznana'), n2 = p.last || p.maiden || (p.first ? '' : 'osoba');
+    const src = ph(p.photo);
+    const pic = src
+      ? `<clipPath id="c-${p.id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><image href="${src}" x="${cx-r}" y="${cy-r}" width="${2*r}" height="${2*r}" clip-path="url(#c-${p.id})" preserveAspectRatio="xMidYMid slice" ${p.dead?'style="filter:grayscale(.35)"':''}/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#efeae0"/><text x="${cx}" y="${cy+9}" text-anchor="middle" font-size="26" font-weight="700" fill="#566072">${esc(initials(p))}</text>`;
+    return `<g class="card" role="button" tabindex="0" data-go="${p.id}" aria-label="${esc(fullName(p) + (years(p)?', '+years(p):''))}">
+      <rect class="bg" x="${x}" y="${y}" width="${CW}" height="${CH}" rx="16" fill="${pend?'#fff2d6':'#fff'}" stroke="${on?'#2e6a4f':pend||fpend?'#e0a84a':'#d6cfc2'}" stroke-width="${on?4:pend||fpend?2.5:1.5}" ${pend||del?'stroke-dasharray="8 5"':''}/>
+      ${pic}<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-width="3"/>
+      <text x="${cx}" y="${y+112}" text-anchor="middle" font-size="16" font-weight="700" fill="#1d2433">${esc(n1)}</text>
+      <text x="${cx}" y="${y+131}" text-anchor="middle" font-size="15" font-weight="600" fill="#1d2433">${esc(n2)}</text>
+      <text x="${cx}" y="${y+149}" text-anchor="middle" font-size="13.5" fill="#566072">${esc(years(p))}</text>
+      ${pend||fpend ? `<text x="${x+CW-10}" y="${y+22}" text-anchor="end" font-size="17">⏳</text>` : ''}
+    </g>`;
+  }).join('');
+  const z = S.zoom;
+  return `<div class="treewrap"><div class="treebox" tabindex="0" aria-label="Całe drzewo. Przeciągnij, aby przesunąć.">
+    <svg class="tree" width="${L.width*z}" height="${L.height*z}" viewBox="0 0 ${L.width} ${L.height}" role="group">${lines}${marks}${cards}</svg></div>
+    <div class="legend"><span>❤️ para</span><span>💔 rozstanie</span><span>⏳ czeka na zatwierdzenie</span></div>
+    <div class="zoom"><button data-zoom="1" aria-label="Powiększ">＋</button><button data-zoom="-1" aria-label="Pomniejsz">－</button><button data-zoom="0" aria-label="Pokaż wybraną osobę" style="font-size:20px">◎</button></div></div>`;
+}
+function setupTree(prev){
+  const box = document.querySelector('.treebox'); if (!box) return;
+  if (prev && (prev.l || prev.t)) { box.scrollLeft = prev.l; box.scrollTop = prev.t; }
+  else centerOn(S.focus);
+  let drag = null;
+  box.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse') return;
+    drag = {x:e.clientX, y:e.clientY, l:box.scrollLeft, t:box.scrollTop, moved:false};
+  });
+  window.onpointermove = e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 5) { drag.moved = true; box.classList.add('drag'); }
+    box.scrollLeft = drag.l - dx; box.scrollTop = drag.t - dy;
+  };
+  window.onpointerup = () => { if (drag) { box.dataset.moved = drag.moved ? '1' : ''; setTimeout(() => box.dataset.moved = '', 0); } drag = null; box.classList.remove('drag'); };
+}
+function centerOn(id){
+  const box = document.querySelector('.treebox'); if (!box || !TL || !TL.pos[id]) return;
+  const z = S.zoom, p = TL.pos[id];
+  box.scrollLeft = (p.x + CW/2) * z - box.clientWidth/2;
+  box.scrollTop = (p.y + CH/2) * z - box.clientHeight/2;
+}
+function setZoom(d){
+  const box = document.querySelector('.treebox');
+  const z0 = S.zoom, z1 = d === 0 ? z0 : Math.min(2, Math.max(0.25, +(z0 * (d > 0 ? 1.25 : 0.8)).toFixed(3)));
+  const cx = (box.scrollLeft + box.clientWidth/2) / z0, cy = (box.scrollTop + box.clientHeight/2) / z0;
+  S.zoom = z1; save();
+  const svg = box.querySelector('svg');
+  svg.setAttribute('width', TL.width * z1); svg.setAttribute('height', TL.height * z1);
+  if (d === 0) centerOn(S.focus);
+  else { box.scrollLeft = cx * z1 - box.clientWidth/2; box.scrollTop = cy * z1 - box.clientHeight/2; }
+}
+
+/* ---------- zmiany: zapis, cofanie, zatwierdzanie ---------- */
+const nextSeq = () => Math.max(0, ...DATA.changes.map(c => c.aseq || 0)) + 1;
+const strip = c => { const o = {...c}; ['id','ts','author','status','aseq','mine'].forEach(k => delete o[k]); return o; };
+async function commit(ch){
+  if (!isAdmin() && !S.author) { const a = await askAuthor(); if (a === null) return; }
+  Object.assign(ch, {id:uid() + uid(), ts:Date.now(), author: isAdmin() ? 'Paulina' : (S.author || 'Ktoś z rodziny'), mine:true});
+  const obj = ch.fields || ch.person;
+  try {
+    for (const k of ['photo', 'photoOrig']) {
+      if (obj?.[k]?.startsWith('data:')) {
+        toast('Wysyłam zdjęcie…');
+        const id = 'ph:' + await rpc('tree_put_photo', {p_pw:S.pw, p_data:obj[k]});
+        PHOTOS[id] = obj[k]; obj[k] = id;
+      }
+    }
+  } catch(e) { toast(errText(e)); return; }
+  if (isAdmin()) { ch.status = 'approved'; ch.aseq = nextSeq(); } else ch.status = 'pending';
+  DATA.changes.push(ch); render();
+  try { await rpc('tree_submit', {p_pw:S.pw, p_device:S.device, p_author:ch.author, p_change:ch}); }
+  catch(e) { DATA.changes = DATA.changes.filter(c => c !== ch); render(); toast('Nie zapisano. ' + errText(e)); return; }
+  toast(isAdmin() ? 'Zapisano. Wszyscy już to widzą.' : 'Zapisano! Zmiana pojawi się u innych po zatwierdzeniu.', () => undo(ch.id).then(ok => ok && toast('Cofnięto.')));
+  return ch;
+}
+const byId = id => DATA.changes.find(c => c.id === id);
+function dependents(id){
+  const c = byId(id), out = [];
+  if (c && c.kind === 'add') DATA.changes.forEach(d => {
+    if (d.id !== id && d.status !== 'rejected' && d.status !== 'undone' && (d.pid === c.newId || d.rel?.of === c.newId)) out.push(d, ...dependents(d.id));
+  });
+  return out;
+}
+function prereqs(c){
+  const ref = c.pid || c.rel?.of; const a = DATA.changes.find(x => x.kind === 'add' && x.newId === ref && x.status === 'pending');
+  return a ? [...prereqs(a), a] : [];
+}
+async function undo(id){
+  if (!isAdmin()) {
+    const list = [byId(id), ...dependents(id)].filter(Boolean), before = list.map(c => c.status);
+    list.forEach(c => c.status = 'undone'); render();
+    try { await rpc('tree_withdraw', {p_pw:S.pw, p_device:S.device, p_ids:list.map(c => c.id)}); return true; }
+    catch(e) { list.forEach((c, i) => c.status = before[i]); render(); toast(errText(e)); return false; }
+  }
+  return adminAct(() => [byId(id), ...dependents(id)].forEach(c => c.status = 'undone'));
+}
+function reject(id){ [byId(id), ...dependents(id)].forEach(c => c.status = 'rejected'); }
+/* zmiany administratora: najpierw lokalnie, potem jedna paczka na serwer (kolejność = kolejność zatwierdzania) */
+async function adminAct(fn){
+  const before = JSON.stringify(DATA.changes), snap = new Map(DATA.changes.map(c => [c.id, JSON.stringify(c)]));
+  fn();
+  const ord = c => c.status === 'approved' ? c.aseq : 1e15;
+  const changed = DATA.changes.filter(c => snap.get(c.id) !== JSON.stringify(c)).sort((a, b) => ord(a) - ord(b));
+  render();
+  if (!changed.length) return true;
+  try { await rpc('tree_admin_update', {p_pw:S.pw, p_updates:changed.map(c => ({id:c.id, status:c.status, data:strip(c)}))}); return true; }
+  catch(e) { DATA.changes = JSON.parse(before); render(); toast(errText(e)); return false; }
+}
+function approve(id, override){
+  const c = byId(id); if (!c || c.status !== 'pending') return;
+  prereqs(c).forEach(a => approve(a.id));
+  if (override) Object.assign(c.kind === 'edit' ? c.fields : c.person, override);
+  if (c.kind === 'edit') {   // konflikty: zatwierdzona wartość wygrywa z innymi propozycjami
+    DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'edit' && o.pid === c.pid).forEach(o => {
+      Object.keys(c.fields).forEach(k => delete o.fields[k]);
+      if (!Object.keys(o.fields).length) o.status = 'rejected';
+    });
+  }
+  c.status = 'approved'; c.aseq = nextSeq();
+}
+
+/* ---------- skrzynka admina ---------- */
+function describe(c, wa){
+  const nm = id => esc(shortName(wa.people[id]));
+  if (c.kind === 'add') return `Nowa osoba: <b>${esc(shortName(c.person))}</b> — ${REL[c.rel.type]} osoby ${nm(c.rel.of)}`;
+  if (c.kind === 'delete') return `Usunięcie osoby: <b>${nm(c.pid)}</b>`;
+  const ks = Object.keys(c.fields);
+  if (ks.includes('photo') && ks.every(k => k === 'photo' || k === 'photoOrig')) return `Nowe zdjęcie: <b>${nm(c.pid)}</b>`;
+  if (ks.length === 1 && ks[0] === 'note') return `Notatka: <b>${nm(c.pid)}</b>`;
+  return `Zmiana danych: <b>${nm(c.pid)}</b>`;
+}
+function fmt(k, v){
+  if (k === 'health') return (v||[]).map(h => HEALTH[h]).join(', ') || '—';
+  if (k === 'gender') return GENDER[v||''];
+  if (k === 'dead') return v ? 'Tak' : 'Nie';
+  return v || '—';
+}
+function inboxHTML(){
+  const A = build(false), V = build(true);
+  const pend = DATA.changes.filter(c => c.status === 'pending').sort((a,b) => a.ts - b.ts);
+  const hist = DATA.changes.filter(c => c.status === 'approved').sort((a,b) => b.aseq - a.aseq).slice(0, 25);
+  const cards = pend.map(c => {
+    let body = '';
+    if (c.kind === 'edit') {
+      body = Object.entries(c.fields).filter(([k]) => k !== 'photoOrig').map(([k,v]) => {
+        const old = A.people[c.pid]?.[k];
+        const others = DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'edit' && o.pid === c.pid && k in o.fields);
+        const conflict = others.length ? `<div class="conflict">⚠️ Inna propozycja dla tego pola: ${others.map(o => `<b>${esc(fmt(k,o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
+        if (k === 'photo') return `<div class="diff"><div class="lbl">Zdjęcie</div><div class="imgcmp">${old?`<span class="av s" style="width:72px;height:72px"><img src="${ph(old)}" alt="Obecne zdjęcie"></span> →`:''}<span class="av s" style="width:96px;height:96px"><img src="${ph(v)}" alt="Nowe zdjęcie"></span></div>${conflict}</div>`;
+        if (k === 'note') return `<div class="diff"><div class="lbl">Notatka</div>
+          <div class="was"><b>Obecnie:</b> ${old ? esc(old) : '<i>brak</i>'}</div>
+          <textarea data-k="note" aria-label="Notatka po zmianie">${esc(v)}</textarea>
+          ${old && v && !v.includes(old) ? `<button class="btn sm ghost" style="margin-top:6px" data-merge="${c.id}">Połącz obie wersje</button>` : ''}${conflict}</div>`;
+        const editable = typeof v === 'string';
+        return `<div class="diff"><div class="lbl">${FIELDS[k]}</div><div class="was">Było: <s>${esc(fmt(k, old))}</s></div>
+          ${editable ? `<input type="text" data-k="${k}" value="${esc(v)}" aria-label="${FIELDS[k]} po zmianie">` : `<div><b>${esc(fmt(k,v))}</b></div>`}${conflict}</div>`;
+      }).join('');
+    } else if (c.kind === 'add') {
+      const pr = prereqs(c);
+      body = ['first','last','maiden','born','died'].filter(k => c.person[k] || ['first','last'].includes(k)).map(k =>
+        `<div class="diff"><div class="lbl">${FIELDS[k]}</div><input type="text" data-k="${k}" value="${esc(c.person[k]||'')}" aria-label="${FIELDS[k]}"></div>`).join('')
+        + (c.person.photo ? `<div class="diff"><div class="lbl">Zdjęcie</div><span class="av s" style="width:80px;height:80px"><img src="${ph(c.person.photo)}" alt=""></span></div>` : '')
+        + (pr.length ? `<div class="conflict">🔗 Ta osoba jest dodana do kogoś, kto też czeka na zatwierdzenie (${pr.map(a => esc(shortName(a.person))).join(', ')}). Zatwierdzenie zatwierdzi oba.</div>` : '');
+    } else if (c.kind === 'delete') {
+      body = `<div class="conflict" style="background:var(--danger-soft);border-color:var(--danger)">Ktoś prosi o usunięcie tej osoby z drzewa. Powód: ${esc(c.reason || 'nie podano')}</div>`;
+    }
+    return `<article class="chg" data-chg="${c.id}"><h3>${describe(c, V)}</h3><div class="meta">od: ${esc(c.author)} · ${timeAgo(c.ts)}</div>${body}
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-approve="${c.id}">✓ Zatwierdź</button><button class="btn danger" data-reject="${c.id}">✕ Odrzuć</button></div></article>`;
+  }).join('');
+  return `<div class="wrap">
+    <h2 style="font-size:22px;margin:6px 0 4px">Do zatwierdzenia</h2>
+    <p style="color:var(--muted);margin:0 0 14px">Możesz poprawić propozycję przed zatwierdzeniem. Odrzucone zmiany po prostu znikają.</p>
+    ${pend.length > 1 ? `<button class="btn primary block" data-act="approveall" style="margin-bottom:14px">✓ Zatwierdź wszystkie (${pend.length})</button>` : ''}
+    ${cards || `<div class="empty-state">🎉 Nic nie czeka na zatwierdzenie.<br></div>`}
+    <div class="section"><h2>Ostatnio zatwierdzone</h2>
+      ${hist.length ? hist.map(c => `<div class="hist"><div>${describe(c, V) || ''}<br><small>od: ${esc(c.author)} · ${timeAgo(c.ts)}</small></div><button class="btn sm ghost" data-undo="${c.id}">↶ Cofnij</button></div>`).join('') : '<p style="color:var(--muted)">Jeszcze nic.</p>'}
+    </div></div>`;
+}
+
+/* ---------- formularze ---------- */
+function openSheet(title, bodyHTML, footHTML, onMount){
+  document.querySelector('.toast')?.remove();
+  const bg = document.createElement('div');
+  bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button data-close aria-label="Zamknij">✕</button></header><form class="body" novalidate>${bodyHTML}</form>${footHTML ? `<div class="foot">${footHTML}</div>` : ''}</div>`;
+  const prevFocus = document.activeElement;
+  const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); prevFocus?.focus?.(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  bg.addEventListener('click', e => { if (e.target === bg || e.target.closest('[data-close]')) close(); });
+  bg.querySelector('form').addEventListener('submit', e => e.preventDefault());
+  document.body.appendChild(bg);
+  const first = bg.querySelector('.body input:not(.sr), .body textarea, .body button');
+  setTimeout(() => (first || bg.querySelector('[data-close]')).focus(), 30);
+  onMount?.(bg, close);
+  return {el:bg, close};
+}
+const txt = (k, v, help='', ph='') => `<div class="field"><label for="f-${k}">${FIELDS[k]}</label><input type="text" id="f-${k}" name="${k}" value="${esc(v||'')}" placeholder="${esc(ph)}" autocomplete="off">${help?`<div class="help">${help}</div>`:''}</div>`;
+function genderField(v){
+  return `<div class="field"><span class="lbl" id="g-l">Płeć</span><div class="choices" role="radiogroup" aria-labelledby="g-l">${Object.entries(GENDER).filter(([k]) => k).map(([k,l]) =>
+    `<label class="choice"><input type="radio" name="gender" value="${k}" ${(v||'')===k?'checked':''}><span>${l}</span></label>`).join('')}</div></div>`;
+}
+function deadField(p){
+  return `<label class="check" style="margin-bottom:14px"><input type="checkbox" name="dead" ${p.dead?'checked':''}> Ta osoba nie żyje</label>`;
+}
+function personForm(p, full){
+  const dateHelp = 'Wpisz, co wiesz – np. 12.05.1946, „1946” albo „ok. 1946”.';
+  let h = `<div class="group">${txt('first',p.first)}${txt('last',p.last)}${genderField(p.gender)}<div data-maidenonly ${p.gender==='K'?'':'hidden'}>${txt('maiden',p.maiden)}</div></div>
+    <div class="group">${txt('born',p.born,dateHelp,'np. 1946')}${full?txt('bornPlace',p.bornPlace,'','np. Poznań'):''}${deadField(p)}
+      <div data-deadonly ${p.dead?'':'hidden'}>${txt('died',p.died,'','np. 2004')}${full?txt('diedPlace',p.diedPlace)+txt('deathCause',p.deathCause)+txt('burial',p.burial,'Cmentarz, kwatera, rząd.'):''}</div></div>`;
+  if (full) h += `<div class="group">${txt('nick',p.nick,'Jak mówiła na nią/niego rodzina.')}${txt('job',p.job)}${txt('lived',p.lived)}</div>
+    <fieldset class="group"><legend>Zdrowie</legend><div class="checks">${Object.entries(HEALTH).map(([k,l]) =>
+      `<label class="check"><input type="checkbox" name="health" value="${k}" ${(p.health||[]).includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
+      <div data-canceronly ${(p.health||[]).includes('cancer')?'':'hidden'}>${txt('cancerType',p.cancerType,'Jaki nowotwór i w jakim wieku.','np. rak piersi, ok. 50 lat')}</div>
+      <div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px">${esc(p.healthNotes||'')}</textarea></div></fieldset>`;
+  return h;
+}
+function wireForm(el){
+  const f = el.querySelector('form');
+  f.addEventListener('change', () => {
+    const g = f.querySelector('[name=gender]:checked'), m = f.querySelector('[data-maidenonly]'); if (m) m.hidden = !(g && g.value === 'K');
+    const dead = f.querySelector('[name=dead]'); if (dead) f.querySelector('[data-deadonly]').hidden = !dead.checked;
+    const c = f.querySelector('[name=health][value=cancer]'); if (c) f.querySelector('[data-canceronly]').hidden = !c.checked;
+  });
+}
+function readForm(el){
+  const f = el.querySelector('form'), o = {};
+  f.querySelectorAll('input[type=text], textarea').forEach(i => o[i.name] = i.value.trim());
+  const g = f.querySelector('[name=gender]:checked'); if (g) o.gender = g.value;
+  const d = f.querySelector('[name=dead]'); if (d) o.dead = d.checked;
+  if (f.querySelector('[name=health]')) o.health = [...f.querySelectorAll('[name=health]:checked')].map(i => i.value);
+  return o;
+}
+function diffFields(p, o){
+  const out = {};
+  for (const [k,v] of Object.entries(o)) { if (JSON.stringify(p[k] ?? (Array.isArray(v)?[]:'')) !== JSON.stringify(v)) out[k] = v; }
+  return out;
+}
+
+function editPerson(){
+  const id = S.focus, p = W.people[id];
+  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">＋ Dodaj krewnego</button>` + personForm(p, true) + `
+    <details class="more"><summary>Więcej opcji</summary>
+      <p style="color:var(--muted)">Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
+      <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button></details>`,
+    `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zmiany</button>`,
+    (el, close) => {
+      wireForm(el);
+      el.querySelector('[data-save]').onclick = () => {
+        const fields = diffFields(p, readForm(el));
+        close();
+        if (!Object.keys(fields).length) return toast('Nic się nie zmieniło.');
+        commit({kind:'edit', pid:id, fields});
+      };
+      el.querySelector('[data-addrel]').onclick = async () => {
+        const fields = diffFields(p, readForm(el));
+        close();
+        if (Object.keys(fields).length && !await commit({kind:'edit', pid:id, fields})) return;
+        addRelative();
+      };
+      el.querySelector('[data-del]').onclick = async () => {
+        close();
+        if (!await ask(`Usunąć osobę „${fullName(p)}” z drzewa?`, 'Tak, usuń')) return;
+        const goTo = parentsOf(W,id)[0] || partnersOf(W,id)[0]?.id || childrenOf(W,id)[0] || START;
+        if (isAdmin()) S.focus = goTo;
+        commit({kind:'delete', pid:id});
+      };
+    });
+}
+function editNote(){
+  const id = S.focus, p = W.people[id];
+  openSheet('Notatka: ' + shortName(p), `<div class="field"><label for="f-note">Co warto wiedzieć o tej osobie? Wspomnienia, historie, ciekawostki.</label>
+    <textarea id="f-note" name="note" style="min-height:260px">${esc(p.note||'')}</textarea></div>`,
+    `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz notatkę</button>`,
+    (el, close) => {
+      const t = el.querySelector('textarea'); setTimeout(() => { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 40);
+      el.querySelector('[data-save]').onclick = () => { const v = t.value.trim(); close(); if (v === (p.note||'')) return; commit({kind:'edit', pid:id, fields:{note:v}}); };
+    });
+}
+function addRelative(type){
+  const of = S.focus, p = W.people[of];
+  const parents = parentsOf(W, of);
+  if (!type) {
+    return openSheet('Kogo chcesz dodać?', `<p style="margin-top:0">Osoba będzie połączona z: <b>${esc(shortName(p))}</b></p><div class="relpick">
+      <button type="button" data-t="parent" ${parents.length>=2?'disabled':''}><b>Rodzica</b><small>${parents.length>=2?'już są oboje':'mamę lub tatę'}</small></button>
+      <button type="button" data-t="partner"><b>Partnera</b><small>męża, żonę, partnera</small></button>
+      <button type="button" data-t="child"><b>Dziecko</b><small>syna lub córkę</small></button>
+      <button type="button" data-t="sibling"><b>Rodzeństwo</b><small>brata lub siostrę</small></button></div>`, '',
+      (el, close) => el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { close(); addRelative(b.dataset.t); }));
+  }
+  if (type === 'parent' && parents.length >= 2) return toast('Ta osoba ma już oboje rodziców w drzewie.');
+  if (type === 'child') {
+    const us = partnerUnions(W, of);
+    if (us.length > 1) {
+      return openSheet('Kto jest drugim rodzicem?', `<div class="listpick">${us.map(u => { const o = u.partners.find(x => x!==of); return o ? miniCard(W,o).replace('data-go=', `data-u="${u.id}" data-x=`) : ''; }).join('')}
+        <button type="button" class="mini add" data-u="">Ktoś inny / nie wiem</button></div>`, '',
+        (el, close) => el.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { close(); addForm('child', b.dataset.u || null); }));
+    }
+    return addForm('child', us[0]?.id || null);
+  }
+  addForm(type, null);
+}
+function addForm(type, union){
+  const of = S.focus, p = W.people[of];
+  const titles = {parent:'Nowy rodzic', partner:'Nowy partner / partnerka', child:'Nowe dziecko', sibling:'Nowe rodzeństwo'};
+  let last = '';
+  if (type === 'child') { const u = W.unions.find(x => x.id === union); const dad = u?.partners.map(x => W.people[x]).find(x => x?.gender === 'M'); last = dad ? dad.last : (p.gender==='M' ? p.last : ''); }
+  if (type === 'sibling') last = p.maiden || p.last;
+  const np = Object.assign(blank(), {last});
+  let photo = '', photoOrig = '';
+  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + `
+    <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">📷 Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
+    `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Dodaj do drzewa</button>`,
+    (el, close) => {
+      wireForm(el);
+      el.querySelector('[data-ph]').onchange = async e => {
+        const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+        photoEditor(await readPhoto(f), (cropped, orig) => {
+          photo = cropped; photoOrig = orig;
+          el.querySelector('[data-prev]').innerHTML = `<span class="av s" style="width:96px;height:96px"><img src="${photo}" alt="Wybrane zdjęcie"></span>`;
+        });
+      };
+      el.querySelector('[data-save]').onclick = async () => {
+        const o = readForm(el);
+        if (!o.first && !o.last) { el.querySelector('#f-first').focus(); return toast('Wpisz przynajmniej imię albo nazwisko.'); }
+        close();
+        const newId = 'n_' + uid();
+        const ch = await commit({kind:'add', newId, person:Object.assign(o, photo ? {photo, photoOrig} : {}), rel:{type, of, union}});
+        if (ch) { S.focus = newId; save(); render(); }
+      };
+    });
+}
+function ask(msg, okLabel){
+  return new Promise(resolve => {
+    let done = false;
+    openSheet('Na pewno?', `<p style="margin-top:0;font-size:18px">${esc(msg)}</p>`,
+      `<button class="btn ghost" data-close>Nie</button><button class="btn danger" data-ok>${esc(okLabel)}</button>`,
+      (el, close) => {
+        el.querySelector('[data-ok]').onclick = () => { done = true; close(); resolve(true); };
+        new MutationObserver((_, mo) => { if (!el.isConnected) { mo.disconnect(); if (!done) resolve(false); } }).observe(document.body, {childList:true});
+      });
+  });
+}
+function photoEditor(src, onSave){
+  let orig = src;
+  openSheet('Zdjęcie', `
+    <p style="margin-top:0">Przesuń zdjęcie palcem, żeby twarz była w kółku. Powiększ przyciskami ＋ i －.</p>
+    <div class="crop" data-crop aria-label="Podgląd kadru"><img alt=""></div>
+    <div class="zoomrow"><button type="button" class="btn ghost sq" data-z="-1" aria-label="Pomniejsz">－</button>
+      <input type="range" id="f-zoom" min="1" max="4" step="0.01" value="1" aria-label="Powiększenie">
+      <button type="button" class="btn ghost sq" data-z="1" aria-label="Powiększ">＋</button></div>
+    <label class="btn ghost block" style="margin-top:16px">🖼️ Wybierz inne zdjęcie<input type="file" accept="image/*" class="sr" data-new></label>`,
+    `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zdjęcie</button>`,
+    (el, close) => {
+      const box = el.querySelector('[data-crop]'), img = box.querySelector('img'), range = el.querySelector('#f-zoom');
+      let F = 1, base = 1, z = 1, ox = 0, oy = 0;
+      const k = () => base * z;
+      const draw = () => {
+        const w = img.naturalWidth * k(), h = img.naturalHeight * k();
+        ox = Math.min(0, Math.max(F - w, ox)); oy = Math.min(0, Math.max(F - h, oy));
+        img.style.width = w + 'px'; img.style.transform = `translate(${ox}px,${oy}px)`; range.value = z;
+      };
+      const setZ = (nz, cx = F/2, cy = F/2) => { nz = Math.min(4, Math.max(1, nz)); const r = nz / z; ox = cx - (cx - ox) * r; oy = cy - (cy - oy) * r; z = nz; draw(); };
+      img.onload = () => {
+        F = box.clientWidth; base = Math.max(F / img.naturalWidth, F / img.naturalHeight); z = 1;
+        ox = (F - img.naturalWidth * base) / 2; oy = (F - img.naturalHeight * base) / 2; draw();
+      };
+      img.src = orig;
+      const pts = new Map(); let pinch = null;
+      box.addEventListener('pointerdown', e => {
+        box.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+        if (pts.size === 2) { const [a,b] = [...pts.values()]; pinch = {d:Math.hypot(a.x-b.x, a.y-b.y), z}; }
+      });
+      box.addEventListener('pointermove', e => {
+        if (!pts.has(e.pointerId)) return;
+        const prev = pts.get(e.pointerId), cur = {x:e.clientX, y:e.clientY}; pts.set(e.pointerId, cur);
+        if (pts.size === 1) { ox += cur.x - prev.x; oy += cur.y - prev.y; draw(); }
+        else if (pinch) { const [a,b] = [...pts.values()], r = box.getBoundingClientRect(); setZ(pinch.z * Math.hypot(a.x-b.x, a.y-b.y) / pinch.d, (a.x+b.x)/2 - r.left, (a.y+b.y)/2 - r.top); }
+      });
+      const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
+      box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+      box.addEventListener('wheel', e => { e.preventDefault(); const r = box.getBoundingClientRect(); setZ(z * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); }, {passive:false});
+      range.oninput = () => setZ(+range.value);
+      el.querySelectorAll('[data-z]').forEach(b => b.onclick = () => setZ(z * (+b.dataset.z > 0 ? 1.25 : 0.8)));
+      el.querySelector('[data-new]').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; orig = await readPhoto(f); img.src = orig; };
+      el.querySelector('[data-save]').onclick = () => {
+        const c = document.createElement('canvas'), kk = k(); c.width = c.height = 400;
+        c.getContext('2d').drawImage(img, -ox/kk, -oy/kk, F/kk, F/kk, 0, 0, 400, 400);
+        close(); onSave(c.toDataURL('image/jpeg', 0.85), orig);
+      };
+    });
+}
+function readPhoto(file){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const m = 1000, s = Math.min(1, m / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(); toast('Nie udało się wczytać zdjęcia.'); };
+    img.src = url;
+  });
+}
+function askAuthor(){
+  return new Promise(resolve => {
+    let done = false;
+    openSheet('Jak masz na imię?', `<p style="margin-top:0">Tylko raz – żeby Paulina wiedziała, od kogo jest zmiana.</p>
+      <div class="field"><label for="f-author">Twoje imię</label><input type="text" id="f-author" placeholder="np. Ciocia Hania" autocomplete="name"></div>`,
+      `<button class="btn ghost" data-skip>Pomiń</button><button class="btn primary" data-ok>Dalej</button>`,
+      (el, close) => {
+        const fin = v => { done = true; close(); resolve(v); };
+        el.querySelector('[data-ok]').onclick = () => { S.author = el.querySelector('input').value.trim() || 'Ktoś z rodziny'; save(); fin(S.author); };
+        el.querySelector('[data-skip]').onclick = () => { S.author = 'Ktoś z rodziny'; save(); fin(S.author); };
+        el.querySelector('input').addEventListener('keydown', e => { if (e.key === 'Enter') el.querySelector('[data-ok]').click(); });
+        new MutationObserver((_, mo) => { if (!el.isConnected) { mo.disconnect(); if (!done) resolve(null); } }).observe(document.body, {childList:true});
+      });
+  });
+}
+function openSearch(){
+  const all = Object.values(W.people);
+  openSheet('Szukaj osoby', `<div class="field"><label for="f-q">Imię lub nazwisko</label><input type="search" id="f-q" autocomplete="off" placeholder="np. Halina"></div><div class="results" aria-live="polite"></div>`, '',
+    (el, close) => {
+      const q = el.querySelector('#f-q'), r = el.querySelector('.results');
+      const draw = () => {
+        const t = norm(q.value);
+        const hits = all.filter(p => !t || norm([p.first,p.last,p.maiden,p.nick].join(' ')).includes(t))
+          .sort((a,b) => shortName(a).localeCompare(shortName(b),'pl')).slice(0, 60);
+        r.innerHTML = hits.length ? hits.map(p => miniCard(W, p.id)).join('') : '<p>Nikogo nie znaleziono.</p>';
+      };
+      q.addEventListener('input', draw); draw();
+      r.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) { close(); go(b.dataset.go, 'person'); } });
+    });
+}
+function openMenu(){
+  openSheet('Więcej', `<div class="listpick">
+    <button type="button" class="btn ghost block" data-m="me">🏠 Wróć do: ${esc(shortName(W.people[START]))}</button>
+    <button type="button" class="btn ghost block" data-m="name">✍️ Zmień swoje imię${S.author?` (teraz: ${esc(S.author)})`:''}</button>
+    <button type="button" class="btn ghost block" data-m="reload">🔄 Odśwież drzewo</button>
+    <button type="button" class="btn ghost block" data-m="lock">🔒 Wyloguj się na tym urządzeniu</button></div>`, '',
+    (el, close) => el.querySelectorAll('[data-m]').forEach(b => b.onclick = async () => {
+      close();
+      const m = b.dataset.m;
+      if (m === 'me') go(START, 'person');
+      if (m === 'name') { S.author = ''; save(); await askAuthor(); }
+      if (m === 'reload') { try { await refresh(); render(); toast('Drzewo jest aktualne.'); } catch(e) { toast(errText(e)); } }
+      if (m === 'lock' && await ask('Wylogować się? Do ponownego wejścia potrzebne będzie hasło.', 'Tak, wyloguj')) { S.pw = ''; DATA = null; save(); render(); }
+    }));
+}
+
+/* ---------- nawigacja i zdarzenia ---------- */
+function go(id, view){
+  S.focus = id;
+  if (view && !wide.matches) S.view = view;
+  if (wide.matches && S.view === 'inbox' && view === 'person') S.view = 'person';
+  save(); render();
+  if (!wide.matches) window.scrollTo(0, 0); else document.querySelector('.pane.side')?.scrollTo(0, 0);
+  if (wide.matches) centerOn(id);
+}
+let toastT;
+function toast(msg, undoFn){
+  document.querySelector('.toast')?.remove(); clearTimeout(toastT);
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status');
+  t.innerHTML = `<span>${esc(msg)}</span>${undoFn ? '<button>↶ Cofnij</button>' : ''}`;
+  if (undoFn) t.querySelector('button').onclick = () => { t.remove(); undoFn(); };
+  document.body.appendChild(t);
+  toastT = setTimeout(() => t.remove(), undoFn ? 8000 : 3500);
+}
+
+app.addEventListener('click', e => {
+  const t = e.target;
+  const goEl = t.closest('[data-go]');
+  if (goEl) {
+    const box = t.closest('.treebox'); if (box && box.dataset.moved) return;
+    return go(goEl.dataset.go, goEl.closest('.treebox') ? 'person' : null);
+  }
+  const v = t.closest('[data-view]'); if (v) { S.view = v.dataset.view; save(); render(); if (S.view !== 'tree') window.scrollTo(0,0); return; }
+  const z = t.closest('[data-zoom]'); if (z) return setZoom(+z.dataset.zoom);
+  const add = t.closest('[data-add]'); if (add) return addRelative(add.dataset.add);
+  const ap = t.closest('[data-approve]');
+  if (ap) {
+    const card = ap.closest('.chg'), c = byId(ap.dataset.approve), o = {};
+    card.querySelectorAll('[data-k]').forEach(i => o[i.dataset.k] = i.value.trim());
+    return adminAct(() => approve(c.id, Object.keys(o).length ? o : null)).then(ok => ok && toast('Zatwierdzone – wszyscy już to widzą.', () => undo(c.id).then(ok => ok && toast('Cofnięto.'))));
+  }
+  const rj = t.closest('[data-reject]'); if (rj) return adminAct(() => reject(rj.dataset.reject)).then(ok => ok && toast('Odrzucono.'));
+  const un = t.closest('[data-undo]'); if (un) return undo(un.dataset.undo).then(ok => ok && toast('Cofnięto zmianę.'));
+  const mg = t.closest('[data-merge]');
+  if (mg) { const c = byId(mg.dataset.merge), A = build(false), ta = mg.closest('.diff').querySelector('textarea'); ta.value = (A.people[c.pid].note + '\n\n' + c.fields.note).trim(); mg.remove(); ta.focus(); return; }
+  const act = t.closest('[data-act]')?.dataset.act;
+  if (act === 'edit') editPerson();
+  if (act === 'photoedit') {
+    const pid = S.focus, p = W.people[pid];
+    (async () => {
+      let src = '';
+      try { src = await getPhoto(p.photoOrig) || await getPhoto(p.photo); } catch(e) { return toast(errText(e)); }
+      if (!src) return toast('Nie udało się wczytać zdjęcia.');
+      photoEditor(src, (photo, photoOrig) => commit({kind:'edit', pid, fields:{photo, photoOrig}}));
+    })();
+  }
+  if (act === 'note') editNote();
+  if (act === 'addrel') addRelative();
+  if (act === 'search') openSearch();
+  if (act === 'menu') openMenu();
+  if (act === 'inbox') { S.view = S.view === 'inbox' ? 'person' : 'inbox'; save(); render(); }
+  if (act === 'approveall') adminAct(() => DATA.changes.filter(c => c.status === 'pending').sort((a,b) => a.ts-b.ts).forEach(c => approve(c.id))).then(ok => ok && toast('Zatwierdzono wszystko.'));
+});
+app.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('g[data-go]')) { e.preventDefault(); go(e.target.dataset.go, 'person'); }
+});
+app.addEventListener('change', async e => {
+  if (e.target.matches('[data-act=photo]')) {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const pid = S.focus;
+    photoEditor(await readPhoto(f), (photo, photoOrig) => commit({kind:'edit', pid, fields:{photo, photoOrig}}));
+  }
+});
+
+/* ---------- ekran hasła ---------- */
+function renderGate(msg){
+  app.innerHTML = `<div class="gate"><div class="box">
+    <div style="font-size:54px" aria-hidden="true">🌳</div>
+    <h1>Drzewo naszej rodziny</h1>
+    <p>Wpisz hasło, które dostałeś(-aś) razem z linkiem.</p>
+    <form><div class="field"><label for="pw">Hasło rodzinne</label><input type="password" id="pw" autocomplete="current-password"></div>
+      <button class="btn primary block">Wejdź</button><div class="err" role="alert"></div>
+      </form></div></div>`;
+  const f = app.querySelector('form');
+  if (msg) f.querySelector('.err').textContent = msg;
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const btn = f.querySelector('button'), err = f.querySelector('.err');
+    btn.disabled = true; btn.textContent = 'Sprawdzam…'; err.textContent = '';
+    S.pw = f.pw.value.trim();
+    try { await refresh(); save(); render(); }
+    catch(e2) {
+      S.pw = ''; btn.disabled = false; btn.textContent = 'Wejdź';
+      err.textContent = e2.message === 'bad_password' ? 'To nie jest to hasło. Spróbuj jeszcze raz.' : errText(e2);
+    }
+  };
+  setTimeout(() => f.pw.focus(), 50);
+}
+
+async function start(){
+  if (!S.pw) return renderGate();
+  app.innerHTML = `<div class="gate"><div class="box"><div style="font-size:54px" aria-hidden="true">🌳</div><h1>Wczytuję drzewo…</h1></div></div>`;
+  try { await refresh(); render(); }
+  catch(e) {
+    if (e.message === 'bad_password') { S.pw = ''; save(); return renderGate('Hasło się zmieniło. Wpisz nowe hasło.'); }
+    app.innerHTML = `<div class="gate"><div class="box"><h1>Nie udało się wczytać drzewa</h1><p>${esc(errText(e))}</p><button class="btn primary block" id="retry">Spróbuj ponownie</button></div></div>`;
+    document.getElementById('retry').onclick = start;
+  }
+}
+start();
+</script>
+</body>
+</html>
