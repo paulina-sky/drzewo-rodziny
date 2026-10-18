@@ -357,7 +357,7 @@ const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
 // znak w drzewie, nazwa
 const USTATUS = {married:['❤️','Małżeństwo'], partner:['🩷','Związek'], divorced:['❌','Rozwód']};
 const ustatus = u => ({'':'married', rozstanie:'divorced', separated:'divorced'})[u.status ?? ''] || u.status;
-const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu'};
+const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu', twins:'Bliźnięta'};
 const FIELDS = {first:'Imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
 const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
 const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
@@ -478,7 +478,8 @@ function apply(w, c, pending){
   } else if (c.kind === 'union') {
     const u = w.unions.find(x => x.id === c.uid); if (!u) return;
     Object.assign(u, clone(c.fields));
-    if (pending) w.flags.unions.add(c.uid);
+    if (pending && Object.keys(c.fields).some(k => k !== 'twins')) w.flags.unions.add(c.uid);
+    if (pending && c.fields.twins) c.fields.twins.flat().forEach(id => (w.flags.fields[id] ||= new Set()).add('twins'));
   } else if (c.kind === 'delete') {
     const id = A(c.pid);
     if (!P[id]) return;
@@ -496,6 +497,10 @@ const partnerUnions = (w,id) => w.unions.filter(u => u.partners.includes(id));
 const partnersOf = (w,id) => partnerUnions(w,id).flatMap(u => u.partners.filter(x => x!==id).map(x => ({id:x, union:u})));
 const childrenOf = (w,id) => [...new Set(partnerUnions(w,id).flatMap(u => u.children))];
 const siblingsOf = (w,id) => { const u = parentUnion(w,id); return u ? u.children.filter(x => x!==id) : []; };
+// bliźnięta zapisane przy związku rodziców jako grupy dzieci urodzonych razem
+const twinsOf = (w,id) => { const g = (parentUnion(w,id)?.twins || []).find(gr => gr.includes(id)); return g ? g.filter(x => x !== id && w.people[x]) : []; };
+const twinWord = (w,id) => ({K:'Bliźniaczka', M:'Bliźniak'})[w.people[id]?.gender] || 'Bliźnię';
+const twinsName = n => n >= 3 ? 'Trojaczki' : 'Bliźnięta';
 
 const sameName = (a, b) => {
   const f = norm(a.first); if (!f || f !== norm(b.first)) return false;
@@ -598,7 +603,7 @@ function render(){
     <button class="iconbtn" data-act="menu">Więcej</button>
   </header>
   <main class="layout">
-    <section class="pane tree ${S.view==='tree'?'on':''}" aria-label="Całe drzewo">${treeHTML()}</section>
+    <section class="pane tree ${S.view==='tree'?'on':''}" aria-label="Całe drzewo">${wide.matches || S.view === 'tree' ? treeHTML() : ''}</section>
     <section class="pane side ${S.view!=='tree'?'on':''}">
       <div class="inner ${S.view!=='inbox'?'on':''}" ${S.view==='inbox'&&!wide.matches?'hidden':''}>${personHTML(S.focus)}</div>
       <div class="inner ${S.view==='inbox'?'on':''}" ${S.view!=='inbox'?'hidden':''}>${isAdmin() ? inboxHTML() : ''}</div>
@@ -637,6 +642,7 @@ function personHTML(id){
     f('born', p.born), f('bornPlace', p.bornPlace),
     p.dead ? f('died', p.died || 'nieznana') : '', f('diedPlace', p.diedPlace), f('deathCause', p.deathCause), f('burial', p.burial),
     f('job', p.job), f('lived', p.lived), f('gender', GENDER[p.gender] && p.gender ? GENDER[p.gender] : ''),
+    twinsOf(w, id).length ? `<div class="${pf.has('twins')?'pend':''}"><dt>${twinsName(twinsOf(w, id).length + 1)}</dt><dd>z: ${esc(twinsOf(w, id).map(x => shortName(w.people[x])).join(', '))}${pf.has('twins')?' <span class="pchip">(czeka)</span>':''}</dd></div>` : '',
   ].join('');
   const hasHealth = health || p.cancerType || p.healthNotes;
   return `<div class="wrap">
@@ -666,7 +672,7 @@ function personHTML(id){
       <div class="strip">${kids.map(x => miniCard(w,x,relWord(w,x,'child'))).join('')}
       <button class="mini add" data-add="child" aria-label="Dodaj dziecko">Dodaj</button></div></div>
     <div class="section"><h2>Rodzeństwo</h2>
-      <div class="strip">${sibs.map(x => miniCard(w,x,relWord(w,x,'sibling'))).join('')}
+      <div class="strip">${sibs.map(x => miniCard(w,x,twinsOf(w,id).includes(x) ? twinWord(w,x) : relWord(w,x,'sibling'))).join('')}
       <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">Dodaj</button></div></div>
     ${facts ? `<div class="section"><h2>Informacje</h2><dl class="facts">${facts}</dl></div>` : ''}
     ${hasHealth ? `<div class="section"><h2>Zdrowie</h2><dl class="facts">
@@ -729,7 +735,7 @@ function layout(w){
   const crossings = g => {
     const e = edges(g); let n = 0;
     for (let i = 0; i < e.length; i++) for (let j = i + 1; j < e.length; j++)
-      if (e[i][2] !== e[j][2] && (e[i][0] - e[j][0]) * (e[i][1] - e[j][1]) < 0) n++;
+      if ((e[i][0] - e[j][0]) * (e[i][1] - e[j][1]) < 0) n++;
     return n;
   };
   const total = () => gens.reduce((s, g) => s + crossings(g), 0);
@@ -774,6 +780,10 @@ function layout(w){
       const ks = u.children.filter(c => P[c] && P[c].gen === g); if (ks.length < 2) return;
       const lo = Math.min(...ks.map(c => idx[c])), hi = Math.max(...ks.map(c => idx[c]));
       rows[g].forEach(un => { if (!un.members.some(m => ks.includes(m))) un.members.forEach(m => { if (idx[m] > lo && idx[m] < hi) n++; }); });
+      (u.twins || []).forEach(gr => {   // między bliźniętami nie powinien stać nikt inny
+        const ix = gr.filter(c => P[c] && P[c].gen === g).map(c => idx[c]); if (ix.length < 2) return;
+        n += 5 * (Math.max(...ix) - Math.min(...ix) + 1 - ix.length);
+      });
     });
     return n;
   };
@@ -804,13 +814,13 @@ function layout(w){
     const load = s => gens.forEach((g, i) => { rows[g] = s[i].map(([un, ms]) => { un.members = ms.slice(); return un; }); reindex(g); });
     const fullCost = () => total() * 1000 + gens.reduce((s, g) => s + intruders(g), 0);
     let bestS = save(), bestC = fullCost(), tries = 0;   // limit prób: na telefonie liczy się szybko, a wynik jest wszędzie taki sam
-    for (let round = 0; round < 2 && bestC >= 1000 && tries <= 120; round++) {
+    for (let round = 0; round < 2 && bestC >= 1000 && tries <= 500; round++) {
       for (const g of gens) for (const un of rows[g].slice()) {
         if (bestC < 1000) break;
         const base = bestS, cur = rows[g].indexOf(un);
         for (let i = 0; i < rows[g].length; i++) {
           if (i === cur) continue;
-          if (++tries > 120) break;
+          if (++tries > 500) break;
           load(base);
           const rest = rows[g].filter(x => x !== un);
           rows[g] = [...rest.slice(0, i), un, ...rest.slice(i)]; reindex(g); flipUnits(g);
@@ -878,7 +888,9 @@ function layout(w){
     }).filter(Boolean);
     const inside = (x, s) => x > s.lo + 2 && x < s.hi - 2;
     const above = spans.map((a, i) => spans.map((b, j) => i !== j && ((a.ax !== null && inside(a.ax, b)) || b.kx.some(x => inside(x, a)))));
-    const lv = spans.map(() => 0);
+    // rodzina z bliźniętami: linia wyżej, żeby rozwidlenie było wyraźne
+    const hasTwins = s => (s.u.twins || []).some(gr => gr.filter(c => P[c] && P[c].gen === g + 1).length >= 2);
+    const lv = spans.map(s => hasTwins(s) ? 2 : 0);
     for (let it = 0; it < 40; it++) {
       let ch = false;
       spans.forEach((_, i) => spans.forEach((_, j) => { if (above[i][j] && !above[j][i] && lv[i] <= lv[j]) { lv[i] = lv[j] + 1; ch = true; } }));
@@ -929,8 +941,13 @@ function treeHTML(){
     const by = L.bus[u.id] ?? ky - 26;
     const xs = ks.map(cx);
     if (ax === undefined) { ax = (Math.min(...xs) + Math.max(...xs)) / 2; ay = by; }
-    const lo = Math.min(ax, ...xs), hi = Math.max(ax, ...xs);
-    lines += `<path data-u="${u.id}" d="M${ax} ${ay+ (ps.length===2?12:0)} V${by} M${lo} ${by} H${hi} ${xs.map(x => `M${x} ${by} V${ky}`).join(' ')}" fill="none" stroke="#5c5548" stroke-width="2.5"/>`;
+    // bliźnięta: wspólny punkt na linii rodzeństwa, z którego kreski rozchodzą się do każdego z nich
+    const groups = (u.twins || []).map(g => g.filter(id => P[id] && ks.includes(id))).filter(g => g.length >= 2);
+    const inTw = new Set(groups.flat()), apex = groups.map(g => avg(g.map(cx)));
+    const ends = ks.filter(id => !inTw.has(id)).map(cx).concat(apex, [ax]);
+    const drops = ks.filter(id => !inTw.has(id)).map(id => `M${cx(id)} ${by} V${ky}`).join(' ')
+      + groups.map((g, i) => g.map(id => `M${apex[i]} ${by} L${cx(id)} ${ky}`).join(' ')).join(' ');
+    lines += `<path data-u="${u.id}" d="M${ax} ${ay+ (ps.length===2?12:0)} V${by} M${Math.min(...ends)} ${by} H${Math.max(...ends)} ${drops}" fill="none" stroke="#5c5548" stroke-width="2.5" stroke-linejoin="round"/>`;
   });
   const cards = Object.values(w.people).map(p => {
     const {x,y} = P[p.id];
@@ -1100,6 +1117,7 @@ function describe(c, wa){
   if (c.kind === 'delete') return `Usunięcie osoby: <b>${nm(c.pid)}</b>`;
   if (c.kind === 'link') return `Połączenie: <b>${nm(c.pid)}</b> — ${REL[c.rel.type]} osoby ${nm(c.rel.of)}`;
   if (c.kind === 'merge') return `Połączono w jedną osobę: <b>${esc((c.names || []).join(' + '))}</b>`;
+  if (c.kind === 'union' && Object.keys(c.fields).every(k => k === 'twins')) return c.fields.twins.length ? `Bliźnięta: <b>${c.fields.twins.map(g => g.map(nm).join(' i ')).join('; ')}</b>` : `Bliźnięta: usunięcie oznaczenia`;
   if (c.kind === 'union') { const u = wa.unions.find(x => x.id === c.uid); return `Związek: <b>${u ? u.partners.map(nm).join(' i ') : '?'}</b>`; }
   const ks = Object.keys(c.fields);
   if (ks.includes('photo') && ks.every(k => k === 'photo' || k === 'photoOrig')) return `Nowe zdjęcie: <b>${nm(c.pid)}</b>`;
@@ -1154,6 +1172,8 @@ function inboxHTML(){
         const old = k === 'status' ? ustatus(u) : u[k];
         const others = DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'union' && o.uid === c.uid && k in o.fields);
         const conflict = others.length ? `<div class="conflict">Inna propozycja: ${others.map(o => `<b>${esc(fmt(k, o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
+        if (k === 'twins') { const tn = gs => (gs || []).map(g => g.map(x => shortName(V.people[x])).join(' i ')).join('; ') || '—';
+          return `<div class="diff"><div class="lbl">Bliźnięta</div><div class="was">Było: <s>${esc(tn(old))}</s></div><div><b>${esc(tn(v))}</b></div></div>`; }
         return `<div class="diff"><div class="lbl">${UFIELDS[k]}</div><div class="was">Było: <s>${esc(fmt(k, old))}</s></div>
           ${k === 'status' ? `<div><b>${esc(fmt(k, v))}</b></div>` : `<input type="text" data-k="${k}" value="${esc(v)}" aria-label="${UFIELDS[k]} po zmianie">`}${conflict}</div>`;
       }).join('');
@@ -1241,9 +1261,25 @@ function diffFields(p, o){
   return out;
 }
 
+function twinsField(id){
+  const sibs = siblingsOf(W, id); if (!sibs.length) return '';
+  const cur = twinsOf(W, id);
+  return `<fieldset class="group"><legend>Bliźnięta</legend>
+    <p style="margin:-6px 0 10px;color:var(--muted);font-size:14px">Zaznacz rodzeństwo urodzone razem z tą osobą.</p>
+    <div class="checks">${sibs.map(s => `<label class="check"><input type="checkbox" name="twin" value="${s}" ${cur.includes(s) ? 'checked' : ''}> ${esc(shortName(W.people[s]))}</label>`).join('')}</div></fieldset>`;
+}
+// nowe grupy bliźniąt przy związku rodziców albo null, gdy nic się nie zmieniło
+function twinChange(id, el){
+  const u = parentUnion(W, id); if (!u || !el.querySelector('[name=twin]')) return null;
+  const checked = [...el.querySelectorAll('[name=twin]:checked')].map(i => i.value);
+  const groups = (u.twins || []).map(g => g.filter(x => x !== id && !checked.includes(x))).filter(g => g.length >= 2);
+  if (checked.length) groups.push([id, ...checked]);
+  const key = gs => JSON.stringify(gs.map(g => g.slice().sort()).sort());
+  return key(groups) === key(u.twins || []) ? null : {uid:u.id, groups};
+}
 function editPerson(){
   const id = S.focus, p = W.people[id];
-  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + `
+  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + twinsField(id) + `
     <details class="more"><summary>Więcej opcji</summary>
       ${isAdmin() ? `<p style="color:var(--muted)">Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
       <button type="button" class="btn block" data-mergeperson style="margin-bottom:14px">Połącz z inną osobą…</button>` : ''}
@@ -1252,11 +1288,12 @@ function editPerson(){
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zmiany</button>`,
     (el, close) => {
       wireForm(el);
-      el.querySelector('[data-save]').onclick = () => {
-        const fields = diffFields(p, readForm(el));
+      el.querySelector('[data-save]').onclick = async () => {
+        const fields = diffFields(p, readForm(el)), tw = twinChange(id, el);
         close();
-        if (!Object.keys(fields).length) return toast('Nic się nie zmieniło.');
-        commit({kind:'edit', pid:id, fields});
+        if (!Object.keys(fields).length && !tw) return toast('Nic się nie zmieniło.');
+        if (Object.keys(fields).length && !await commit({kind:'edit', pid:id, fields})) return;
+        if (tw) commit({kind:'union', uid:tw.uid, fields:{twins:tw.groups}});
       };
       el.querySelector('[data-addrel]').onclick = async () => {
         const fields = diffFields(p, readForm(el));
@@ -1315,7 +1352,8 @@ function addForm(type, union){
   if (type === 'sibling') last = p.maiden || p.last;
   const np = Object.assign(blank(), {last});
   let photo = '', photoOrig = '';
-  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') + kidsField(of) : '') + `
+  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') + kidsField(of) : '')
+    + (type === 'sibling' ? `<label class="check" style="margin-bottom:14px"><input type="checkbox" name="istwin"> ${esc(p.first || shortName(p))} i nowa osoba to bliźnięta</label>` : '') + `
     <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Dodaj do drzewa</button>`,
     (el, close) => {
@@ -1334,6 +1372,7 @@ function addForm(type, union){
         const kids = [...el.querySelectorAll('[name=kid]:checked')].map(i => i.value);
         const rel = Object.assign({type, of, union}, ust ? {ustatus:ust} : {}, kids.length ? {kids} : {});
         const person = Object.assign(o, photo ? {photo, photoOrig} : {});
+        const isTwin = !!el.querySelector('[name=istwin]:checked');
         close();
         const dups = Object.values(W.people).filter(q => q.id !== of && sameName(o, q));
         const pick = dups.length ? await dupDialog(o, dups) : 'new';
@@ -1345,6 +1384,14 @@ function addForm(type, union){
         }
         const newId = 'n_' + uid();
         const ch = await commit({kind:'add', newId, person, rel});
+        if (ch && isTwin) {
+          const u = parentUnion(W, of);
+          if (u) {
+            const groups = clone(u.twins || []), g = groups.find(x => x.includes(of));
+            if (g) { if (!g.includes(newId)) g.push(newId); } else groups.push([of, newId]);
+            await commit({kind:'union', uid:u.id, fields:{twins:groups}});
+          }
+        }
         if (ch) { S.focus = newId; save(); render(); }
       };
     });
