@@ -145,9 +145,7 @@ dl.facts .pend{background:var(--pend-bg)}
   radial-gradient(circle at 1px 1px,#e2dccf 1px,transparent 0) 0 0/22px 22px, var(--bg);cursor:grab;touch-action:pan-x pan-y}
 @media (min-width:1000px){.treebox{height:100%}}
 .treebox.drag{cursor:grabbing}
-.zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:5}
 .treewrap{position:relative;height:100%}
-.zoom button{align-items:center;justify-content:center;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:15px;font-weight:650;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .legend{position:absolute;left:12px;bottom:12px;z-index:5;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:14px;display:none;gap:12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
 svg.tree{transform-origin:0 0}
 svg.tree text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -261,8 +259,8 @@ details.more summary{cursor:pointer;color:var(--muted);min-height:44px;display:f
 .enter .section:nth-of-type(4){animation-delay:.09s}
 .enter .section:nth-of-type(n+5){animation-delay:.12s}
 .pane.tree.enter{animation:fadeIn .25s ease-out}
-.btn,.mini,.uchip,.iconbtn,.relpick button,.choice span,.check,nav.tabs button,.zoom button,.avbtn{transition:transform .14s var(--ease),background-color .18s,border-color .18s,box-shadow .18s,color .18s}
-.btn:active,.mini:active,.uchip:active,.iconbtn:active,.relpick button:active,.choice span:active,.check:active,.zoom button:active,.avbtn:active{transform:scale(.96)}
+.btn,.mini,.uchip,.iconbtn,.relpick button,.choice span,.check,nav.tabs button,.avbtn{transition:transform .14s var(--ease),background-color .18s,border-color .18s,box-shadow .18s,color .18s}
+.btn:active,.mini:active,.uchip:active,.iconbtn:active,.relpick button:active,.choice span:active,.check:active,.avbtn:active{transform:scale(.96)}
 .mini:hover,.relpick button:hover{box-shadow:0 4px 14px rgba(29,36,51,.10);transform:translateY(-1px)}
 nav.tabs button[aria-current=page]::before{animation:grow .3s var(--ease)}
 .badge{animation:breathe 2.6s ease-in-out infinite}
@@ -955,8 +953,7 @@ function treeHTML(){
   const z = S.zoom;
   return `<div class="treewrap"><div class="treebox" tabindex="0" aria-label="Całe drzewo. Przesuń palcem, a dwoma palcami powiększ lub pomniejsz.">
     <svg class="tree" width="${L.width*z}" height="${L.height*z}" viewBox="0 0 ${L.width} ${L.height}" role="group">${lines}${marks}${cards}</svg></div>
-    <div class="legend"><span><i class="lg"></i>❤️ małżeństwo</span><span><i class="lg"></i>🩷 związek</span><span><i class="lg dot"></i>❌ rozwód</span><span>⏳ czeka na zatwierdzenie</span></div>
-    <div class="zoom"><button class="desk-only" data-zoom="1">Powiększ</button><button class="desk-only" data-zoom="-1">Pomniejsz</button><button data-zoom="0">Wybrana osoba</button></div></div>`;
+    <div class="legend"><span><i class="lg"></i>❤️ małżeństwo</span><span><i class="lg"></i>🩷 związek</span><span><i class="lg dot"></i>❌ rozwód</span><span>⏳ czeka na zatwierdzenie</span></div></div>`;
 }
 function setupTree(prev){
   const box = document.querySelector('.treebox'); if (!box) return;
@@ -1023,11 +1020,6 @@ function centerOn(id, smooth){
   const box = document.querySelector('.treebox'); if (!box || !TL || !TL.pos[id]) return;
   const z = S.zoom, p = TL.pos[id];
   box.scrollTo({left:(p.x + CW/2) * z - box.clientWidth/2, top:(p.y + CH/2) * z - box.clientHeight/2, behavior:smooth && !reduceMotion() ? 'smooth' : 'auto'});
-}
-function setZoom(d){
-  if (d === 0) return centerOn(S.focus, true);
-  const box = document.querySelector('.treebox'), w = box.clientWidth/2, h = box.clientHeight/2;
-  zoomTo(S.zoom * (d > 0 ? 1.25 : 0.8), (box.scrollLeft + w) / S.zoom, (box.scrollTop + h) / S.zoom, w, h);
 }
 
 /* ---------- zmiany: zapis, cofanie, zatwierdzanie ---------- */
@@ -1622,7 +1614,6 @@ app.addEventListener('click', e => {
     return go(goEl.dataset.go, goEl.closest('.treebox') ? 'person' : null);
   }
   const v = t.closest('[data-view]'); if (v) { S.view = v.dataset.view; save(); render(); if (S.view !== 'tree') window.scrollTo(0,0); return; }
-  const z = t.closest('[data-zoom]'); if (z) return setZoom(+z.dataset.zoom);
   const add = t.closest('[data-add]'); if (add) return addRelative(add.dataset.add);
   const uc = t.closest('[data-union]'); if (uc) return editUnion(uc.dataset.union);
   const ap = t.closest('[data-approve]');
