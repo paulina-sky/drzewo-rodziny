@@ -110,6 +110,15 @@ nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 .btn.sq{width:52px;flex:0 0 52px;padding:0;font-size:24px}
 .badge{display:inline-flex;align-items:center;gap:6px;background:var(--pend-bg);color:var(--pend);border:1px solid var(--pend-line);border-radius:999px;padding:3px 10px;font-size:14px;font-weight:650;margin-top:8px}
 .badge.del{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.pitem{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;max-width:280px}
+.pitem .mini{max-width:none}
+.uchip{min-height:40px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;color:var(--ink);cursor:pointer;text-align:left;line-height:1.3}
+.uchip:hover{border-color:var(--accent)}
+.uchip.pend{background:var(--pend-bg);border:2px dashed var(--pend-line)}
+.ugrid .choice{flex:1 1 45%}
+.legend .lg{display:inline-block;width:22px;border-top:2.5px solid #5c5548;vertical-align:middle;margin-right:4px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.dot{border-top:2.5px dotted #9a948a}
 .hint{background:var(--accent-soft);border-radius:var(--r);padding:12px 14px;margin-top:14px}
 .pchip{font-size:13px;color:var(--pend);font-weight:650;white-space:nowrap}
 
@@ -247,8 +256,8 @@ details.more summary{cursor:pointer;color:var(--muted);min-height:44px;display:f
 .enter .section:nth-of-type(4){animation-delay:.09s}
 .enter .section:nth-of-type(n+5){animation-delay:.12s}
 .pane.tree.enter{animation:fadeIn .25s ease-out}
-.btn,.mini,.iconbtn,.relpick button,.choice span,.check,nav.tabs button,.zoom button,.avbtn{transition:transform .14s var(--ease),background-color .18s,border-color .18s,box-shadow .18s,color .18s}
-.btn:active,.mini:active,.iconbtn:active,.relpick button:active,.choice span:active,.check:active,.zoom button:active,.avbtn:active{transform:scale(.96)}
+.btn,.mini,.uchip,.iconbtn,.relpick button,.choice span,.check,nav.tabs button,.zoom button,.avbtn{transition:transform .14s var(--ease),background-color .18s,border-color .18s,box-shadow .18s,color .18s}
+.btn:active,.mini:active,.uchip:active,.iconbtn:active,.relpick button:active,.choice span:active,.check:active,.zoom button:active,.avbtn:active{transform:scale(.96)}
 nav.tabs button:active svg{transform:scale(.9)}
 nav.tabs button svg{transition:transform .14s var(--ease)}
 .mini:hover,.relpick button:hover{box-shadow:0 4px 14px rgba(29,36,51,.10);transform:translateY(-1px)}
@@ -344,6 +353,9 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');
 
+const USTATUS = {married:['💍','Małżeństwo'], partner:['🤝','Związek partnerski'], divorced:['💔','Rozwód'], separated:['💔','Rozstanie']};
+const ustatus = u => ({'':'married', rozstanie:'separated'})[u.status ?? ''] || u.status;
+const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu / rozstania'};
 const FIELDS = {first:'Imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
 const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
 const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
@@ -352,7 +364,7 @@ const blank = () => ({first:'',last:'',maiden:'',nick:'',gender:'',born:'',bornP
 
 /* ---------- budowanie drzewa z danych + zmian ---------- */
 function build(withPending){
-  const w = {people:{}, unions:clone(DATA.base.unions), flags:{add:new Set(), fields:{}, del:new Set()}};
+  const w = {people:{}, unions:clone(DATA.base.unions), flags:{add:new Set(), fields:{}, del:new Set(), unions:new Set()}};
   for (const [id,p] of Object.entries(DATA.base.people)) w.people[id] = Object.assign(blank(), clone(p));
   DATA.changes.filter(c => c.status==='approved').sort((a,b) => a.aseq-b.aseq).forEach(c => apply(w,c,false));
   if (withPending) DATA.changes.filter(c => c.status==='pending').sort((a,b) => a.ts-b.ts).forEach(c => apply(w,c,true));
@@ -370,7 +382,7 @@ function apply(w, c, pending){
     const U = w.unions, t = c.rel.type, nu = 'u_'+c.id;
     const keyOf = id => P[id] ? P[id].key : of.key;
     if (t === 'partner') {
-      U.push({id:nu, partners:[of.id, np.id], children:[]}); np.gen = of.gen; np.key = of.key + 1;
+      U.push({id:nu, partners:[of.id, np.id], children:[], status:c.rel.ustatus || 'married'}); np.gen = of.gen; np.key = of.key + 1;
     } else if (t === 'child') {
       let u = c.rel.union && U.find(x => x.id === c.rel.union);
       if (!u) { u = {id:nu, partners:[of.id], children:[]}; U.push(u); }
@@ -391,6 +403,10 @@ function apply(w, c, pending){
     }
     P[np.id] = np;
     if (pending) w.flags.add.add(np.id);
+  } else if (c.kind === 'union') {
+    const u = w.unions.find(x => x.id === c.uid); if (!u) return;
+    Object.assign(u, clone(c.fields));
+    if (pending) w.flags.unions.add(c.uid);
   } else if (c.kind === 'delete') {
     if (!P[c.pid]) return;
     if (pending) { w.flags.del.add(c.pid); return; }
@@ -436,6 +452,19 @@ function avatar(p, size){
   const cls = 'av ' + size + (p.dead ? ' dead' : '');
   const s = ph(p.photo);
   return s ? `<span class="${cls}"><img src="${s}" alt=""></span>` : `<span class="${cls}" aria-hidden="true">${esc(initials(p))}</span>`;
+}
+function partnerWord(w, id, u){
+  const g = w.people[id]?.gender === 'M' ? 1 : 0;
+  return {married:['Żona','Mąż'], partner:['Partnerka','Partner'], divorced:['Była żona','Były mąż'], separated:['Była partnerka','Były partner']}[ustatus(u)][g];
+}
+// np. „💍 Małżeństwo · ślub 1968 (do śmierci męża)” – z perspektywy osoby `me`
+function unionLabel(w, u, me){
+  const st = ustatus(u), other = w.people[u.partners.find(x => x !== me)];
+  let s = USTATUS[st][0] + ' ' + USTATUS[st][1];
+  if (u.wedDate && (st === 'married' || st === 'divorced')) s += ' · ślub ' + u.wedDate;
+  if (u.endDate && (st === 'divorced' || st === 'separated')) s += ' · ' + (st === 'divorced' ? 'rozwód ' : 'rozstanie ') + u.endDate;
+  if (st === 'married' && other?.dead) s += other.gender === 'M' ? ' (do śmierci męża)' : other.gender === 'K' ? ' (do śmierci żony)' : ' (do śmierci partnera)';
+  return s;
 }
 function relWord(w, id, type){
   const g = w.people[id]?.gender;
@@ -549,7 +578,8 @@ function personHTML(id){
     </article>
     ${unknown ? `<div class="hint">Nie znamy jeszcze danych tej osoby. <b>Wiesz coś?</b> Kliknij „Edytuj dane”.</div>` : ''}
     <div class="section"><h2>${partners.length > 1 ? 'Partnerzy' : 'Partner / partnerka'}</h2>
-      <div class="strip">${partners.map(x => miniCard(w, x.id, (x.union.status==='rozstanie'?'💔 rozstanie':'♥ '+relWord(w,x.id,'partner')))).join('')}
+      <div class="strip">${partners.map(x => `<div class="pitem">${miniCard(w, x.id, partnerWord(w, x.id, x.union))}
+        <button class="uchip${w.flags.unions.has(x.union.id) ? ' pend' : ''}" data-union="${x.union.id}" aria-label="Rodzaj związku: ${esc(unionLabel(w, x.union, id))}. Zmień">${esc(unionLabel(w, x.union, id))}${w.flags.unions.has(x.union.id) ? ' ⏳' : ''} <span aria-hidden="true">✏️</span></button></div>`).join('')}
       <button class="mini add" data-add="partner" aria-label="Dodaj partnera lub partnerkę">＋ Dodaj</button></div></div>
     <div class="section"><h2>Dzieci</h2>
       <div class="strip">${kids.map(x => miniCard(w,x,relWord(w,x,'child'))).join('')}
@@ -799,15 +829,16 @@ function treeHTML(){
     const cy = id => P[id].y + 46, cx = id => P[id].x + CW/2;
     if (ps.length === 2) {
       const [a,b] = ps.map(cx).sort((m,n) => m-n), y = cy(ps[0]);
-      const div = u.status === 'rozstanie';
+      const st = ustatus(u), div = st === 'divorced' || st === 'separated';
+      const stroke = div ? '#9a948a' : '#5c5548', dash = div ? 'stroke-dasharray="3 6"' : st === 'partner' ? 'stroke-dasharray="8 6"' : '';
       if (b - a > CW + GAP + 1) {
         // partner nie stoi obok (np. trzeci związek): łuk nad kartami, by nie nakładał się na inne linie
         const top = P[ps[0]].y - 12 - (bracketN[P[ps[0]].y] = (bracketN[P[ps[0]].y] || 0) + 1) * 8;
-        lines += `<path d="M${a} ${P[ps[0]].y} V${top} H${b} V${P[ps[0]].y}" fill="none" stroke="#5c5548" stroke-width="2.5" ${div?'stroke-dasharray="7 6"':''}/>`;
+        lines += `<path d="M${a} ${P[ps[0]].y} V${top} H${b} V${P[ps[0]].y}" fill="none" stroke="${stroke}" stroke-width="2.5" ${dash}/>`;
         ax = (a+b)/2; ay = top;
         marks += `<text x="${ax}" y="${top+7}" text-anchor="middle" font-size="18" aria-hidden="true">${div?'💔':'❤️'}</text>`;
       } else {
-        lines += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="#5c5548" stroke-width="2.5" ${div?'stroke-dasharray="7 6"':''}/>`;
+        lines += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="${stroke}" stroke-width="2.5" ${dash}/>`;
         ax = (a+b)/2; ay = y;
         marks += `<text x="${ax}" y="${y+7}" text-anchor="middle" font-size="20" aria-hidden="true">${div?'💔':'❤️'}</text>`;
       }
@@ -841,7 +872,7 @@ function treeHTML(){
   const z = S.zoom;
   return `<div class="treewrap"><div class="treebox" tabindex="0" aria-label="Całe drzewo. Przesuń palcem, a dwoma palcami powiększ lub pomniejsz.">
     <svg class="tree" width="${L.width*z}" height="${L.height*z}" viewBox="0 0 ${L.width} ${L.height}" role="group">${lines}${marks}${cards}</svg></div>
-    <div class="legend"><span>❤️ para</span><span>💔 rozstanie</span><span>⏳ czeka na zatwierdzenie</span></div>
+    <div class="legend"><span><i class="lg"></i>❤️ małżeństwo</span><span><i class="lg dash"></i>❤️ związek partnerski</span><span><i class="lg dot"></i>💔 rozwód / rozstanie</span><span>⏳ czeka na zatwierdzenie</span></div>
     <div class="zoom"><button class="desk-only" data-zoom="1" aria-label="Powiększ">＋</button><button class="desk-only" data-zoom="-1" aria-label="Pomniejsz">－</button><button data-zoom="0" aria-label="Pokaż wybraną osobę" style="font-size:20px">◎</button></div></div>`;
 }
 function setupTree(prev){
@@ -943,12 +974,13 @@ const byId = id => DATA.changes.find(c => c.id === id);
 function dependents(id){
   const c = byId(id), out = [];
   if (c && c.kind === 'add') DATA.changes.forEach(d => {
-    if (d.id !== id && d.status !== 'rejected' && d.status !== 'undone' && (d.pid === c.newId || d.rel?.of === c.newId)) out.push(d, ...dependents(d.id));
+    if (d.id !== id && d.status !== 'rejected' && d.status !== 'undone' && (d.pid === c.newId || d.rel?.of === c.newId || d.uid === 'u_' + c.id)) out.push(d, ...dependents(d.id));
   });
   return out;
 }
 function prereqs(c){
-  const ref = c.pid || c.rel?.of; const a = DATA.changes.find(x => x.kind === 'add' && x.newId === ref && x.status === 'pending');
+  const ref = c.pid || c.rel?.of;
+  const a = DATA.changes.find(x => x.kind === 'add' && x.status === 'pending' && (x.newId === ref || 'u_' + x.id === c.uid));
   return a ? [...prereqs(a), a] : [];
 }
 async function undo(id){
@@ -975,9 +1007,9 @@ async function adminAct(fn){
 function approve(id, override){
   const c = byId(id); if (!c || c.status !== 'pending') return;
   prereqs(c).forEach(a => approve(a.id));
-  if (override) Object.assign(c.kind === 'edit' ? c.fields : c.person, override);
-  if (c.kind === 'edit') {   // konflikty: zatwierdzona wartość wygrywa z innymi propozycjami
-    DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'edit' && o.pid === c.pid).forEach(o => {
+  if (override) Object.assign(c.kind === 'add' ? c.person : c.fields, override);
+  if (c.kind === 'edit' || c.kind === 'union') {   // konflikty: zatwierdzona wartość wygrywa z innymi propozycjami
+    DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === c.kind && o.pid === c.pid && o.uid === c.uid).forEach(o => {
       Object.keys(c.fields).forEach(k => delete o.fields[k]);
       if (!Object.keys(o.fields).length) o.status = 'rejected';
     });
@@ -990,6 +1022,7 @@ function describe(c, wa){
   const nm = id => esc(shortName(wa.people[id]));
   if (c.kind === 'add') return `Nowa osoba: <b>${esc(shortName(c.person))}</b> — ${REL[c.rel.type]} osoby ${nm(c.rel.of)}`;
   if (c.kind === 'delete') return `Usunięcie osoby: <b>${nm(c.pid)}</b>`;
+  if (c.kind === 'union') { const u = wa.unions.find(x => x.id === c.uid); return `Związek: <b>${u ? u.partners.map(nm).join(' i ') : '?'}</b>`; }
   const ks = Object.keys(c.fields);
   if (ks.includes('photo') && ks.every(k => k === 'photo' || k === 'photoOrig')) return `Nowe zdjęcie: <b>${nm(c.pid)}</b>`;
   if (ks.length === 1 && ks[0] === 'note') return `Notatka: <b>${nm(c.pid)}</b>`;
@@ -999,6 +1032,7 @@ function fmt(k, v){
   if (k === 'health') return (v||[]).map(h => HEALTH[h]).join(', ') || '—';
   if (k === 'gender') return GENDER[v||''];
   if (k === 'dead') return v ? 'Tak' : 'Nie';
+  if (k === 'status') return USTATUS[ustatus({status:v})].join(' ');
   return v || '—';
 }
 function inboxHTML(){
@@ -1027,6 +1061,15 @@ function inboxHTML(){
         `<div class="diff"><div class="lbl">${FIELDS[k]}</div><input type="text" data-k="${k}" value="${esc(c.person[k]||'')}" aria-label="${FIELDS[k]}"></div>`).join('')
         + (c.person.photo ? `<div class="diff"><div class="lbl">Zdjęcie</div><span class="av s" style="width:80px;height:80px"><img src="${ph(c.person.photo)}" alt=""></span></div>` : '')
         + (pr.length ? `<div class="conflict">🔗 Ta osoba jest dodana do kogoś, kto też czeka na zatwierdzenie (${pr.map(a => esc(shortName(a.person))).join(', ')}). Zatwierdzenie zatwierdzi oba.</div>` : '');
+    } else if (c.kind === 'union') {
+      const u = A.unions.find(x => x.id === c.uid) || {};
+      body = Object.entries(c.fields).map(([k, v]) => {
+        const old = k === 'status' ? ustatus(u) : u[k];
+        const others = DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'union' && o.uid === c.uid && k in o.fields);
+        const conflict = others.length ? `<div class="conflict">⚠️ Inna propozycja: ${others.map(o => `<b>${esc(fmt(k, o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
+        return `<div class="diff"><div class="lbl">${UFIELDS[k]}</div><div class="was">Było: <s>${esc(fmt(k, old))}</s></div>
+          ${k === 'status' ? `<div><b>${esc(fmt(k, v))}</b></div>` : `<input type="text" data-k="${k}" value="${esc(v)}" aria-label="${UFIELDS[k]} po zmianie">`}${conflict}</div>`;
+      }).join('');
     } else if (c.kind === 'delete') {
       body = `<div class="conflict" style="background:var(--danger-soft);border-color:var(--danger)">Ktoś prosi o usunięcie tej osoby z drzewa. Powód: ${esc(c.reason || 'nie podano')}</div>`;
     }
@@ -1182,7 +1225,7 @@ function addForm(type, union){
   if (type === 'sibling') last = p.maiden || p.last;
   const np = Object.assign(blank(), {last});
   let photo = '', photoOrig = '';
-  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + `
+  openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') : '') + `
     <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">📷 Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Dodaj do drzewa</button>`,
     (el, close) => {
@@ -1199,11 +1242,49 @@ function addForm(type, union){
         if (!o.first && !o.last) { el.querySelector('#f-first').focus(); return toast('Wpisz przynajmniej imię albo nazwisko.'); }
         close();
         const newId = 'n_' + uid();
-        const ch = await commit({kind:'add', newId, person:Object.assign(o, photo ? {photo, photoOrig} : {}), rel:{type, of, union}});
+        const ust = el.querySelector('[name=ustatus]:checked')?.value;
+        const ch = await commit({kind:'add', newId, person:Object.assign(o, photo ? {photo, photoOrig} : {}), rel:Object.assign({type, of, union}, ust ? {ustatus:ust} : {})});
         if (ch) { S.focus = newId; save(); render(); }
       };
     });
 }
+function statusField(st){
+  return `<div class="field"><span class="lbl" id="us-l">Jaki to związek?</span><div class="choices ugrid" role="radiogroup" aria-labelledby="us-l">${Object.entries(USTATUS).map(([k, [e, l]]) =>
+    `<label class="choice"><input type="radio" name="ustatus" value="${k}" ${st === k ? 'checked' : ''}><span>${e} ${l}</span></label>`).join('')}</div></div>`;
+}
+function editUnion(uid){
+  const u = W.unions.find(x => x.id === uid); if (!u) return;
+  const [a, b] = u.partners.map(x => W.people[x]);
+  const st = ustatus(u);
+  openSheet('Związek: ' + [a, b].filter(Boolean).map(p => p.first || shortName(p)).join(' i '), statusField(st) + `
+    <div class="group">
+      <div data-wed>${txtU('wedDate', u.wedDate, 'np. 1968 albo 12.06.1968')}${txtU('wedPlace', u.wedPlace, 'np. Gniezno')}</div>
+      <div data-end>${txtU('endDate', u.endDate, 'np. 1990')}</div>
+      <p data-none style="color:var(--muted);margin:0 0 14px">Tu nie trzeba nic więcej wpisywać.</p>
+    </div>`,
+    `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz</button>`,
+    (el, close) => {
+      const f = el.querySelector('form');
+      const sync = () => {
+        const s = f.querySelector('[name=ustatus]:checked')?.value;
+        f.querySelector('[data-wed]').hidden = !(s === 'married' || s === 'divorced');
+        f.querySelector('[data-end]').hidden = !(s === 'divorced' || s === 'separated');
+        f.querySelector('[data-none]').hidden = s !== 'partner';
+        f.querySelector('label[for=f-endDate]').textContent = s === 'separated' ? 'Data rozstania' : 'Data rozwodu';
+      };
+      f.addEventListener('change', sync); sync();
+      el.querySelector('[data-save]').onclick = () => {
+        const o = {status:f.querySelector('[name=ustatus]:checked').value};
+        ['wedDate', 'wedPlace', 'endDate'].forEach(k => o[k] = f.querySelector('#f-' + k).value.trim());
+        const fields = {};
+        Object.entries(o).forEach(([k, v]) => { if ((k === 'status' ? st : (u[k] || '')) !== v) fields[k] = v; });
+        close();
+        if (!Object.keys(fields).length) return toast('Nic się nie zmieniło.');
+        commit({kind:'union', uid, fields});
+      };
+    });
+}
+const txtU = (k, v, ph) => `<div class="field"><label for="f-${k}">${UFIELDS[k] === UFIELDS.endDate ? 'Data rozwodu' : UFIELDS[k]}</label><input type="text" id="f-${k}" value="${esc(v || '')}" placeholder="${esc(ph)}" autocomplete="off"></div>`;
 function ask(msg, okLabel){
   return new Promise(resolve => {
     let done = false;
@@ -1354,6 +1435,7 @@ app.addEventListener('click', e => {
   const v = t.closest('[data-view]'); if (v) { S.view = v.dataset.view; save(); render(); if (S.view !== 'tree') window.scrollTo(0,0); return; }
   const z = t.closest('[data-zoom]'); if (z) return setZoom(+z.dataset.zoom);
   const add = t.closest('[data-add]'); if (add) return addRelative(add.dataset.add);
+  const uc = t.closest('[data-union]'); if (uc) return editUnion(uc.dataset.union);
   const ap = t.closest('[data-approve]');
   if (ap) {
     const card = ap.closest('.chg'), c = byId(ap.dataset.approve), o = {};
