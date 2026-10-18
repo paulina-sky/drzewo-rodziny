@@ -133,8 +133,9 @@ dl.facts .pend{background:var(--pend-bg)}
 .treebox.drag{cursor:grabbing}
 .zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:5}
 .treewrap{position:relative;height:100%}
-.zoom button{width:52px;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:26px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.zoom button{align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:26px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .legend{position:absolute;left:12px;bottom:12px;z-index:5;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:14px;display:none;gap:12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
+svg.tree{transform-origin:0 0}
 svg.tree text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 svg.tree .card{cursor:pointer}
 svg.tree .card:hover rect.bg{stroke:var(--accent);stroke-width:2}
@@ -571,10 +572,10 @@ function treeHTML(){
     </g>`;
   }).join('');
   const z = S.zoom;
-  return `<div class="treewrap"><div class="treebox" tabindex="0" aria-label="Całe drzewo. Przeciągnij, aby przesunąć.">
+  return `<div class="treewrap"><div class="treebox" tabindex="0" aria-label="Całe drzewo. Przesuń palcem, a dwoma palcami powiększ lub pomniejsz.">
     <svg class="tree" width="${L.width*z}" height="${L.height*z}" viewBox="0 0 ${L.width} ${L.height}" role="group">${lines}${marks}${cards}</svg></div>
     <div class="legend"><span>❤️ para</span><span>💔 rozstanie</span><span>⏳ czeka na zatwierdzenie</span></div>
-    <div class="zoom"><button data-zoom="1" aria-label="Powiększ">＋</button><button data-zoom="-1" aria-label="Pomniejsz">－</button><button data-zoom="0" aria-label="Pokaż wybraną osobę" style="font-size:20px">◎</button></div></div>`;
+    <div class="zoom"><button class="desk-only" data-zoom="1" aria-label="Powiększ">＋</button><button class="desk-only" data-zoom="-1" aria-label="Pomniejsz">－</button><button data-zoom="0" aria-label="Pokaż wybraną osobę" style="font-size:20px">◎</button></div></div>`;
 }
 function setupTree(prev){
   const box = document.querySelector('.treebox'); if (!box) return;
@@ -592,6 +593,50 @@ function setupTree(prev){
     box.scrollLeft = drag.l - dx; box.scrollTop = drag.t - dy;
   };
   window.onpointerup = () => { if (drag) { box.dataset.moved = drag.moved ? '1' : ''; setTimeout(() => box.dataset.moved = '', 0); } drag = null; box.classList.remove('drag'); };
+
+  // Powiększanie dwoma palcami. W trakcie gestu tylko skalujemy obraz (płynnie), rozmiar drzewa zmieniamy na końcu.
+  const svg = box.querySelector('svg');
+  let pinch = null;
+  const mid = ts => { const r = box.getBoundingClientRect(); return {x:(ts[0].clientX + ts[1].clientX)/2 - r.left, y:(ts[0].clientY + ts[1].clientY)/2 - r.top}; };
+  const dist = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+  box.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) return;
+    const m = mid(e.touches);
+    pinch = {d0:dist(e.touches), m0:m, m, k:1, z0:S.zoom, ox:box.scrollLeft + m.x, oy:box.scrollTop + m.y};
+    svg.style.transformOrigin = `${pinch.ox}px ${pinch.oy}px`;
+  }, {passive:true});
+  box.addEventListener('touchmove', e => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    pinch.m = mid(e.touches);
+    pinch.k = clampZoom(pinch.z0 * dist(e.touches) / pinch.d0) / pinch.z0;
+    svg.style.transform = `translate(${pinch.m.x - pinch.m0.x}px, ${pinch.m.y - pinch.m0.y}px) scale(${pinch.k})`;
+  }, {passive:false});
+  const endPinch = () => {
+    if (!pinch) return;
+    const {k, z0, ox, oy, m} = pinch; pinch = null;
+    svg.style.transform = '';
+    zoomTo(z0 * k, ox / z0, oy / z0, m.x, m.y);
+    box.dataset.moved = '1'; setTimeout(() => box.dataset.moved = '', 300);
+  };
+  box.addEventListener('touchend', e => { if (e.touches.length < 2) endPinch(); });
+  box.addEventListener('touchcancel', endPinch);
+  box.addEventListener('gesturestart', e => e.preventDefault());
+  // Gładzik na komputerze (ściśnięcie = ctrl + kółko)
+  box.addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    zoomTo(S.zoom * Math.exp(-e.deltaY / 100), (box.scrollLeft + mx) / S.zoom, (box.scrollTop + my) / S.zoom, mx, my);
+  }, {passive:false});
+}
+const clampZoom = z => Math.min(2, Math.max(0.25, z));
+// Ustawia powiększenie tak, by punkt drzewa (cx, cy) znalazł się w miejscu (sx, sy) okna drzewa.
+function zoomTo(z, cx, cy, sx, sy){
+  const box = document.querySelector('.treebox'), svg = box.querySelector('svg');
+  S.zoom = clampZoom(z); save();
+  svg.setAttribute('width', TL.width * S.zoom); svg.setAttribute('height', TL.height * S.zoom);
+  box.scrollLeft = cx * S.zoom - sx; box.scrollTop = cy * S.zoom - sy;
 }
 function centerOn(id){
   const box = document.querySelector('.treebox'); if (!box || !TL || !TL.pos[id]) return;
@@ -600,14 +645,9 @@ function centerOn(id){
   box.scrollTop = (p.y + CH/2) * z - box.clientHeight/2;
 }
 function setZoom(d){
-  const box = document.querySelector('.treebox');
-  const z0 = S.zoom, z1 = d === 0 ? z0 : Math.min(2, Math.max(0.25, +(z0 * (d > 0 ? 1.25 : 0.8)).toFixed(3)));
-  const cx = (box.scrollLeft + box.clientWidth/2) / z0, cy = (box.scrollTop + box.clientHeight/2) / z0;
-  S.zoom = z1; save();
-  const svg = box.querySelector('svg');
-  svg.setAttribute('width', TL.width * z1); svg.setAttribute('height', TL.height * z1);
-  if (d === 0) centerOn(S.focus);
-  else { box.scrollLeft = cx * z1 - box.clientWidth/2; box.scrollTop = cy * z1 - box.clientHeight/2; }
+  if (d === 0) return centerOn(S.focus);
+  const box = document.querySelector('.treebox'), w = box.clientWidth/2, h = box.clientHeight/2;
+  zoomTo(S.zoom * (d > 0 ? 1.25 : 0.8), (box.scrollLeft + w) / S.zoom, (box.scrollTop + h) / S.zoom, w, h);
 }
 
 /* ---------- zmiany: zapis, cofanie, zatwierdzanie ---------- */
