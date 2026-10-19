@@ -53,11 +53,12 @@ header.top h1{font-size:19px;flex:1;white-space:nowrap;overflow:hidden;text-over
 .pane.on{display:block}
 main{padding-bottom:84px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
-nav.tabs button{flex:1;min-height:56px;font-size:15px!important;flex-direction:row!important;flex-wrap:wrap;padding:4px 6px;line-height:1.2;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;color:var(--muted);font-weight:600;position:relative}
+nav.tabs button{flex:1;min-height:64px;line-height:1.2;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;color:var(--muted);font-weight:600;position:relative}
 nav.tabs button[aria-current=page]{color:var(--accent)}
 nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;left:20%;right:20%;height:3px;background:var(--accent);border-radius:0 0 3px 3px}
 .count{background:var(--danger);color:#fff;border-radius:999px;font-size:12px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
-nav.tabs .count{margin-left:6px}
+nav.tabs button .ic{width:26px;height:26px}
+nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 
 .desk-only{display:none!important}
 @media (min-width:1000px){
@@ -82,7 +83,9 @@ nav.tabs .count{margin-left:6px}
 .mini:hover{border-color:var(--accent)}
 .mini .nm{font-weight:650;line-height:1.25}
 .mini .yr{font-size:14px;color:var(--muted)}
-.mini.add{border-style:dashed;color:var(--accent);font-weight:650;justify-content:center;padding:8px 16px}
+.mini.add{border-style:dashed;color:var(--accent);font-weight:650;justify-content:center;padding:8px 18px;min-width:64px}
+.mini.add .ic{width:30px;height:30px}
+.ic{width:1em;height:1em;flex:0 0 auto}
 .mini.pending{border:2px dashed var(--pend-line);background:var(--pend-bg)}
 .av{flex:0 0 auto;border-radius:50%;overflow:hidden;background:var(--soft);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted);border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
 .av img{width:100%;height:100%;object-fit:cover;display:block}
@@ -98,6 +101,7 @@ nav.tabs .count{margin-left:6px}
 .hero .actions{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hero .actions .wide{grid-column:1/-1}
 .hero .actions.one{grid-template-columns:1fr}
+.hero .actions .btn{padding:10px 10px;gap:6px;white-space:nowrap}
 .avbtn{border:0;background:none;padding:0;cursor:pointer;position:relative;display:inline-block;border-radius:50%}
 .avbtn:hover .av{box-shadow:0 0 0 3px var(--accent)}
 .avedit{position:absolute;left:50%;transform:translateX(-50%);bottom:4px;padding:4px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:14px;font-weight:650;color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.15)}
@@ -160,7 +164,8 @@ svg.tree .card:focus rect.bg{stroke:#1d6fd8;stroke-width:3}
 @media (min-width:700px){.sheet-bg{align-items:center}.sheet{border-radius:20px;max-height:90vh}}
 .sheet>header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card)}
 .sheet>header h2{flex:1;font-size:20px}
-.sheet>header button{min-height:48px;padding:0 16px;border:0;background:var(--soft);border-radius:12px;font-size:15px;font-weight:650;cursor:pointer}
+.sheet>header button{min-width:48px;min-height:48px;display:inline-flex;align-items:center;justify-content:center;border:0;background:var(--soft);border-radius:12px;cursor:pointer;color:var(--ink)}
+.sheet>header button .ic{width:22px;height:22px}
 .sheet .body{padding:16px;overflow:auto;flex:1}
 .sheet .foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);display:flex;gap:10px}
 .sheet .foot .btn{flex:1}
@@ -296,6 +301,16 @@ let DATA = null;          // {role, base, changes} z serwera
 const PHOTOS = {};        // 'ph:<id>' -> data URL
 let inflight = 0;
 const isAdmin = () => DATA?.role === 'admin';
+const svg = (d, w = 2) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', 2.4),
+  person: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
+  tree: svg('<rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 7v4M5 16v-3h14v3"/>'),
+  inbox: svg('<path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l1 8v6H4v-6z"/>'),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>', 2.4),
+  pen: svg('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4),
+};
 
 /* ---------- serwer ---------- */
 async function rpc(fn, args){
@@ -598,7 +613,7 @@ function render(){
   app.innerHTML = `
   <header class="top">
     <h1>Drzewo rodziny</h1>
-    <button class="iconbtn" data-act="search">Szukaj</button>
+    <button class="iconbtn" data-act="search">${ICON.search}<span>Szukaj</span></button>
     ${isAdmin() ? `<button class="iconbtn desk-only" data-act="inbox">Zmiany ${n?`<span class="count">${n}</span>`:''}</button>` : ''}
     <button class="iconbtn" data-act="menu">Więcej</button>
   </header>
@@ -610,9 +625,9 @@ function render(){
     </section>
   </main>
   <nav class="tabs" aria-label="Główne">
-    <button data-view="person" ${S.view==='person'?'aria-current="page"':''}>Osoba</button>
-    <button data-view="tree" ${S.view==='tree'?'aria-current="page"':''}>Całe drzewo</button>
-    ${isAdmin() ? `<button data-view="inbox" ${S.view==='inbox'?'aria-current="page"':''}>Do zatwierdzenia${n?`<span class="count">${n}</span>`:''}</button>` : ''}
+    <button data-view="person" ${S.view==='person'?'aria-current="page"':''}>${ICON.person}Osoba</button>
+    <button data-view="tree" ${S.view==='tree'?'aria-current="page"':''}>${ICON.tree}Całe drzewo</button>
+    ${isAdmin() ? `<button data-view="inbox" ${S.view==='inbox'?'aria-current="page"':''}>${ICON.inbox}Do zatwierdzenia${n?`<span class="count">${n}</span>`:''}</button>` : ''}
   </nav>`;
   const hdr = document.querySelector('header.top').offsetHeight;
   document.documentElement.style.setProperty('--hdr', hdr + 'px');
@@ -649,7 +664,7 @@ function personHTML(id){
     <div class="section" style="margin-top:4px">
       <h2>Rodzice</h2>
       <div class="strip">${parents.map(x => miniCard(w,x,relWord(w,x,'parent'))).join('')}
-        ${parents.length < 2 ? `<button class="mini add" data-add="parent" aria-label="Dodaj rodzica">Dodaj</button>` : ''}</div>
+        ${parents.length < 2 ? `<button class="mini add" data-add="parent" aria-label="Dodaj rodzica">${ICON.plus}</button>` : ''}</div>
     </div>
     <article class="hero ${isAddPend?'pending':''}" aria-labelledby="pname">
       ${p.photo ? `<button class="avbtn" data-act="photoedit" aria-label="Zmień lub wykadruj zdjęcie">${avatar(p,'l')}<span class="avedit" aria-hidden="true">Zmień</span></button>` : avatar(p,'l')}
@@ -659,21 +674,21 @@ function personHTML(id){
       ${!isAddPend && pf.size ? `<div class="badge">Twoje zmiany czekają na zatwierdzenie</div>` : ''}
       ${isDelPend ? `<div class="badge del">Zgłoszono do usunięcia</div>` : ''}
       <div class="actions ${p.photo?'one':''}">
-        <button class="btn primary" data-act="edit">Edytuj dane</button>
-        ${p.photo ? '' : `<label class="btn">Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-act="photo"></label>`}
+        <button class="btn primary" data-act="edit">${ICON.pen}Edytuj dane</button>
+        ${p.photo ? '' : `<label class="btn">${ICON.plus}Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-act="photo"></label>`}
       </div>
     </article>
     ${unknown ? `<div class="hint">Nie znamy jeszcze danych tej osoby. <b>Wiesz coś?</b> Kliknij „Edytuj dane”.</div>` : ''}
     <div class="section"><h2>${partners.length > 1 ? 'Partnerzy' : 'Partner / partnerka'}</h2>
       <div class="strip">${partners.map(x => `<div class="pitem">${miniCard(w, x.id, partnerWord(w, x.id, x.union))}
         <button class="uchip${w.flags.unions.has(x.union.id) ? ' pend' : ''}" data-union="${x.union.id}" aria-label="Rodzaj związku: ${esc(unionLabel(w, x.union, id))}. Zmień">${esc(unionLabel(w, x.union, id))}${w.flags.unions.has(x.union.id) ? ' · czeka' : ''} <span class="uedit">Zmień</span></button></div>`).join('')}
-      <button class="mini add" data-add="partner" aria-label="Dodaj partnera lub partnerkę">Dodaj</button></div></div>
+      <button class="mini add" data-add="partner" aria-label="Dodaj partnera lub partnerkę">${ICON.plus}</button></div></div>
     <div class="section"><h2>Dzieci</h2>
       <div class="strip">${kids.map(x => miniCard(w,x,relWord(w,x,'child'))).join('')}
-      <button class="mini add" data-add="child" aria-label="Dodaj dziecko">Dodaj</button></div></div>
+      <button class="mini add" data-add="child" aria-label="Dodaj dziecko">${ICON.plus}</button></div></div>
     <div class="section"><h2>Rodzeństwo</h2>
       <div class="strip">${sibs.map(x => miniCard(w,x,twinsOf(w,id).includes(x) ? twinWord(w,x) : relWord(w,x,'sibling'))).join('')}
-      <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">Dodaj</button></div></div>
+      <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">${ICON.plus}</button></div></div>
     ${facts ? `<div class="section"><h2>Informacje</h2><dl class="facts">${facts}</dl></div>` : ''}
     ${hasHealth ? `<div class="section"><h2>Zdrowie</h2><dl class="facts">
         ${health ? `<div class="${pf.has('health')?'pend':''}"><dt>Choroby</dt><dd><span class="chips">${health}</span></dd></div>` : ''}
@@ -1199,7 +1214,7 @@ function openSheet(title, bodyHTML, footHTML, onMount){
   document.querySelector('.toast')?.remove();
   const bg = document.createElement('div');
   bg.className = 'sheet-bg';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button data-close>Zamknij</button></header><form class="body" novalidate>${bodyHTML}</form>${footHTML ? `<div class="foot">${footHTML}</div>` : ''}</div>`;
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button data-close aria-label="Zamknij">${ICON.close}</button></header><form class="body" novalidate>${bodyHTML}</form>${footHTML ? `<div class="foot">${footHTML}</div>` : ''}</div>`;
   const prevFocus = document.activeElement;
   let closed = false;
   const close = () => {
@@ -1354,7 +1369,7 @@ function addForm(type, union){
   let photo = '', photoOrig = '';
   openSheet(titles[type], `<p style="margin-top:0">${REL[type][0].toUpperCase()+REL[type].slice(1)} osoby <b>${esc(shortName(p))}</b>. Wypełnij tylko to, co wiesz.</p>` + personForm(np, false) + (type === 'partner' ? statusField('married') + kidsField(of) : '')
     + (type === 'sibling' ? `<label class="check" style="margin-bottom:14px"><input type="checkbox" name="istwin"> ${esc(p.first || shortName(p))} i nowa osoba to bliźnięta</label>` : '') + `
-    <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
+    <div class="field"><span class="lbl">Zdjęcie (nieobowiązkowe)</span><label class="btn block">${ICON.plus}Dodaj zdjęcie<input type="file" accept="image/*" class="sr" data-ph></label><div data-prev style="margin-top:8px"></div></div>`,
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Dodaj do drzewa</button>`,
     (el, close) => {
       wireForm(el);
