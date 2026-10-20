@@ -45,6 +45,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--accent);color:#fff;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header.top h1{font-size:19px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .iconbtn{min-width:48px;min-height:48px;border-radius:12px;border:0;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-weight:600}
+.iconbtn .ic{width:20px;height:20px}
+.iconbtn[data-act=menu] .ic{width:24px;height:24px}
 .iconbtn:hover{background:rgba(255,255,255,.24)}
 
 /* układ */
@@ -61,6 +63,9 @@ nav.tabs button .ic{width:26px;height:26px}
 nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 
 .desk-only{display:none!important}
+.panelbar{display:none}
+.panelbar button{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);border-radius:12px;cursor:pointer;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.panelbar .ic{width:20px;height:20px}
 @media (min-width:1000px){
   main{padding-bottom:0}
   nav.tabs{display:none}
@@ -72,6 +77,11 @@ nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
   .pane.side>.inner.on{display:block}
   .desk-only{display:inline-flex!important}
   .legend{display:flex}
+  .layout.nopanel{grid-template-columns:minmax(0,1fr)}
+  .layout.nopanel .pane.side{display:none}
+  .layout.nopanel .pane.tree{border-right:0}
+  .panelbar{display:flex;justify-content:flex-end;position:sticky;top:0;z-index:4;padding:10px 12px 0;pointer-events:none}
+  .panelbar button{pointer-events:auto}
 }
 
 /* osoba */
@@ -192,8 +202,17 @@ legend{font-size:18px;font-weight:700;margin:6px 0 12px;padding:0}
 .check{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 12px;border:2px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;font-weight:550}
 .check input{width:24px;height:24px;accent-color:var(--accent);flex:0 0 auto}
 .check:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
-details.more{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
-details.more summary{cursor:pointer;color:var(--muted);min-height:44px;display:flex;align-items:center}
+details.acc.group{padding:0}
+details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:12px 16px;font-size:18px;font-weight:700;border-radius:var(--r)}
+details.acc>summary::-webkit-details-marker{display:none}
+details.acc>summary::after{content:"";flex:0 0 auto;width:10px;height:10px;margin:-4px 4px 0 0;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg);transition:transform .2s var(--ease,ease)}
+details.acc[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
+details.acc>summary:focus-visible{outline:3px solid #1d6fd8;outline-offset:2px}
+details.acc .accb{padding:0 16px 4px}
+details.acc[open] .accb{animation:rise .25s var(--ease,ease)}
+details.acc.more>summary{color:var(--muted);font-size:16px;font-weight:650}
+fieldset.twins{border:0;padding:0;margin:0 0 18px}
+fieldset.twins legend{font-weight:650;margin-bottom:4px;padding:0}
 .relpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .relpick button{min-height:96px;border:2px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px}
 .relpick button:hover{border-color:var(--accent)}
@@ -311,6 +330,7 @@ const ICON = {
   inbox: svg('<path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l1 8v6H4v-6z"/>'),
   close: svg('<path d="M6 6l12 12M18 6 6 18"/>', 2.4),
   pen: svg('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+  more: `<svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
   plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4),
 };
 
@@ -375,11 +395,11 @@ const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
 const USTATUS = {married:['❤️','Małżeństwo'], partner:['🩷','Związek'], divorced:['❌','Rozwód']};
 const ustatus = u => ({'':'married', rozstanie:'divorced', separated:'divorced'})[u.status ?? ''] || u.status;
 const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu', twins:'Bliźnięta'};
-const FIELDS = {first:'Imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
+const FIELDS = {first:'Imię',middle:'Drugie imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
 const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
 const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
 const REL = {child:'dziecko',parent:'rodzic',partner:'partner(ka)',sibling:'rodzeństwo'};
-const blank = () => ({first:'',last:'',maiden:'',nick:'',gender:'',born:'',bornPlace:'',dead:false,died:'',diedPlace:'',deathCause:'',burial:'',job:'',lived:'',health:[],cancerType:'',healthNotes:'',note:'',photo:''});
+const blank = () => ({first:'',middle:'',last:'',maiden:'',nick:'',gender:'',born:'',bornPlace:'',dead:false,died:'',diedPlace:'',deathCause:'',burial:'',job:'',lived:'',health:[],cancerType:'',healthNotes:'',note:'',photo:''});
 
 /* ---------- budowanie drzewa z danych + zmian ---------- */
 function build(withPending){
@@ -519,6 +539,8 @@ const twinsOf = (w,id) => { const g = (parentUnion(w,id)?.twins || []).find(gr =
 const twinWord = (w,id) => ({K:'Bliźniaczka', M:'Bliźniak'})[w.people[id]?.gender] || 'Bliźnię';
 const twinsName = n => n >= 3 ? 'Trojaczki' : 'Bliźnięta';
 
+// wyszukiwanie: każde wpisane słowo musi wystąpić w imionach lub nazwiskach (kolejność dowolna)
+const matchName = (p, q) => { const hay = norm([p.first, p.middle, p.last, p.maiden, p.nick].filter(Boolean).join(' ')); return norm(q).split(/\s+/).filter(Boolean).every(w => hay.includes(w)); };
 const sameName = (a, b) => {
   const f = norm(a.first); if (!f || f !== norm(b.first)) return false;
   const la = [a.last, a.maiden].filter(Boolean).map(norm), lb = [b.last, b.maiden].filter(Boolean).map(norm);
@@ -539,6 +561,7 @@ function fullName(p){
   if (!p) return 'Osoba usunięta';
   if (!p.first && !p.last && !p.maiden) return 'Osoba nieznana';
   const parts = [p.first || '(imię nieznane)'];
+  if (p.middle) parts.push(p.middle);
   if (p.maiden && p.maiden !== p.last) parts.push('('+p.maiden+')');
   if (p.last) parts.push(p.last);
   return parts.join(' ');
@@ -616,12 +639,13 @@ function render(){
   <header class="top">
     <h1>Drzewo rodziny</h1>
     <button class="iconbtn" data-act="search">${ICON.search}<span>Szukaj</span></button>
-    ${isAdmin() ? `<button class="iconbtn desk-only" data-act="inbox">Zmiany ${n?`<span class="count">${n}</span>`:''}</button>` : ''}
-    <button class="iconbtn" data-act="menu">Więcej</button>
+    ${isAdmin() ? `<button class="iconbtn desk-only" data-act="inbox">Do zatwierdzenia ${n?`<span class="count">${n}</span>`:''}</button>` : ''}
+    <button class="iconbtn" data-act="menu" aria-label="Więcej">${ICON.more}</button>
   </header>
-  <main class="layout">
+  <main class="layout${wide.matches && S.panel === false ? ' nopanel' : ''}">
     <section class="pane tree ${S.view==='tree'?'on':''}" aria-label="Całe drzewo">${wide.matches || S.view === 'tree' ? treeHTML() : ''}</section>
     <section class="pane side ${S.view!=='tree'?'on':''}">
+      <div class="panelbar"><button data-act="closepanel" aria-label="Zamknij panel i pokaż całe drzewo">${ICON.close}</button></div>
       <div class="inner ${S.view!=='inbox'?'on':''}" ${S.view==='inbox'&&!wide.matches?'hidden':''}>${personHTML(S.focus)}</div>
       <div class="inner ${S.view==='inbox'?'on':''}" ${S.view!=='inbox'?'hidden':''}>${isAdmin() ? inboxHTML() : ''}</div>
     </section>
@@ -1246,16 +1270,19 @@ function deadField(p){
 }
 function personForm(p, full){
   const dateHelp = 'Wpisz, co wiesz – np. 12.05.1946, „1946” albo „ok. 1946”.';
-  let h = `<div class="group">${txt('first',p.first)}${txt('last',p.last)}${genderField(p.gender)}<div data-maidenonly ${p.gender==='K'?'':'hidden'}>${txt('maiden',p.maiden)}</div></div>
-    <div class="group">${txt('born',p.born,dateHelp,'np. 1946')}${full?txt('bornPlace',p.bornPlace,'','np. Poznań'):''}${deadField(p)}
-      <div data-deadonly ${p.dead?'':'hidden'}>${txt('died',p.died,'','np. 2004')}${full?txt('diedPlace',p.diedPlace)+txt('deathCause',p.deathCause)+txt('burial',p.burial,'Cmentarz, kwatera, rząd.'):''}</div></div>`;
-  if (full) h += `<div class="group">${txt('nick',p.nick,'Jak mówiła na nią/niego rodzina.')}${txt('job',p.job)}${txt('lived',p.lived)}</div>
-    <fieldset class="group"><legend>Zdrowie</legend><div class="checks">${Object.entries(HEALTH).map(([k,l]) =>
+  // w edycji każda sekcja ma tytuł i da się ją zwinąć; w dodawaniu zwykłe grupy
+  const sec = (title, inner) => full ? accordion(title, inner, true) : `<div class="group">${inner}</div>`;
+  let h = sec('Podstawowe dane', `${txt('first',p.first)}${full?txt('middle',p.middle):''}${txt('last',p.last)}${genderField(p.gender)}<div data-maidenonly ${p.gender==='K'?'':'hidden'}>${txt('maiden',p.maiden)}</div>`)
+    + sec(full ? 'Urodzenie i śmierć' : '', `${txt('born',p.born,dateHelp,'np. 1946')}${full?txt('bornPlace',p.bornPlace,'','np. Poznań'):''}${deadField(p)}
+      <div data-deadonly ${p.dead?'':'hidden'}>${txt('died',p.died,'','np. 2004')}${full?txt('diedPlace',p.diedPlace)+txt('deathCause',p.deathCause)+txt('burial',p.burial,'Cmentarz, kwatera, rząd.'):''}</div>`);
+  if (full) h += sec('Życie', `${txt('nick',p.nick,'Jak mówiła na nią/niego rodzina.')}${txt('job',p.job)}${txt('lived',p.lived)}`)
+    + sec('Zdrowie', `<div class="checks">${Object.entries(HEALTH).map(([k,l]) =>
       `<label class="check"><input type="checkbox" name="health" value="${k}" ${(p.health||[]).includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
       <div data-canceronly ${(p.health||[]).includes('cancer')?'':'hidden'}>${txt('cancerType',p.cancerType,'Jaki nowotwór i w jakim wieku.','np. rak piersi, ok. 50 lat')}</div>
-      <div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px">${esc(p.healthNotes||'')}</textarea></div></fieldset>`;
+      <div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px">${esc(p.healthNotes||'')}</textarea></div>`);
   return h;
 }
+const accordion = (title, inner, open, cls = '') => `<details class="acc group ${cls}" ${open ? 'open' : ''}><summary>${title}</summary><div class="accb">${inner}</div></details>`;
 function wireForm(el){
   const f = el.querySelector('form');
   f.addEventListener('change', () => {
@@ -1281,8 +1308,8 @@ function diffFields(p, o){
 function twinsField(id){
   const sibs = siblingsOf(W, id); if (!sibs.length) return '';
   const cur = twinsOf(W, id);
-  return `<fieldset class="group"><legend>Bliźnięta</legend>
-    <p style="margin:-6px 0 10px;color:var(--muted);font-size:14px">Zaznacz rodzeństwo urodzone razem z tą osobą.</p>
+  return `<fieldset class="twins"><legend>Bliźnięta</legend>
+    <p style="margin:0 0 10px;color:var(--muted);font-size:14px">Zaznacz rodzeństwo urodzone razem z tą osobą.</p>
     <div class="checks">${sibs.map(s => `<label class="check"><input type="checkbox" name="twin" value="${s}" ${cur.includes(s) ? 'checked' : ''}> ${esc(shortName(W.people[s]))}</label>`).join('')}</div></fieldset>`;
 }
 // nowe grupy bliźniąt przy związku rodziców albo null, gdy nic się nie zmieniło
@@ -1296,12 +1323,11 @@ function twinChange(id, el){
 }
 function editPerson(){
   const id = S.focus, p = W.people[id];
-  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + twinsField(id) + `
-    <details class="more"><summary>Więcej opcji</summary>
+  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + accordion('Więcej opcji', `${twinsField(id)}
       ${isAdmin() ? `<p style="color:var(--muted)">Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
       <button type="button" class="btn block" data-mergeperson style="margin-bottom:14px">Połącz z inną osobą…</button>` : ''}
       <p style="color:var(--muted)">Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
-      <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button></details>`,
+      <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button>`, false, 'more'),
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zmiany</button>`,
     (el, close) => {
       wireForm(el);
@@ -1442,7 +1468,7 @@ function dupDialog(o, dups){
       });
   });
 }
-const MERGE_KEYS = ['first','last','maiden','nick','gender','born','bornPlace','dead','died','diedPlace','deathCause','burial','job','lived','health','cancerType','healthNotes','note','photo'];
+const MERGE_KEYS = ['first','middle','last','maiden','nick','gender','born','bornPlace','dead','died','diedPlace','deathCause','burial','job','lived','health','cancerType','healthNotes','note','photo'];
 function mergePick(aId){
   const a = W.people[aId];
   openSheet('Połącz z…', `<p style="margin-top:0">Wybierz osobę, która jest tą samą osobą co <b>${esc(fullName(a))}</b>.</p>
@@ -1451,7 +1477,7 @@ function mergePick(aId){
       const q = el.querySelector('#f-mq'), r = el.querySelector('.results');
       const draw = () => {
         const tq = norm(q.value);
-        const list = Object.values(W.people).filter(p => p.id !== aId && (tq ? norm([p.first, p.last, p.maiden, p.nick].join(' ')).includes(tq) : norm(p.first) === norm(a.first) && p.first))
+        const list = Object.values(W.people).filter(p => p.id !== aId && (tq ? matchName(p, tq) : norm(p.first) === norm(a.first) && p.first))
           .sort((x, y) => sameName(a, y) - sameName(a, x) || shortName(x).localeCompare(shortName(y), 'pl')).slice(0, 40);
         r.innerHTML = list.length ? list.map(p => `<div class="dup">${miniCard(W, p.id).replace('data-go=', 'data-pick=')}<p class="dupwho">${esc(whoIs(W, p.id))}</p></div>`).join('')
           : `<p>${tq ? 'Nikogo nie znaleziono.' : 'Wpisz imię lub nazwisko drugiej osoby.'}</p>`;
@@ -1625,7 +1651,7 @@ function openSearch(){
       const q = el.querySelector('#f-q'), r = el.querySelector('.results');
       const draw = () => {
         const t = norm(q.value);
-        const hits = all.filter(p => !t || norm([p.first,p.last,p.maiden,p.nick].join(' ')).includes(t))
+        const hits = all.filter(p => !t || matchName(p, t))
           .sort((a,b) => shortName(a).localeCompare(shortName(b),'pl')).slice(0, 60);
         r.innerHTML = hits.length ? hits.map(p => miniCard(W, p.id)).join('') : '<p>Nikogo nie znaleziono.</p>';
       };
@@ -1651,7 +1677,7 @@ function openMenu(){
 
 /* ---------- nawigacja i zdarzenia ---------- */
 function go(id, view){
-  S.focus = id;
+  S.focus = id; S.panel = true;
   if (view && !wide.matches) S.view = view;
   if (wide.matches && S.view === 'inbox' && view === 'person') S.view = 'person';
   save(); render();
@@ -1705,7 +1731,8 @@ app.addEventListener('click', e => {
   if (act === 'addrel') addRelative();
   if (act === 'search') openSearch();
   if (act === 'menu') openMenu();
-  if (act === 'inbox') { S.view = S.view === 'inbox' ? 'person' : 'inbox'; save(); render(); }
+  if (act === 'inbox') { S.view = S.view === 'inbox' && S.panel !== false ? 'person' : 'inbox'; S.panel = true; save(); render(); }
+  if (act === 'closepanel') { S.panel = false; save(); render(); }
   if (act === 'approveall') Promise.all([...document.querySelectorAll('.chg')].map(leave)).then(() => adminAct(() => DATA.changes.filter(c => c.status === 'pending').sort((a,b) => a.ts-b.ts).forEach(c => approve(c.id)))).then(ok => ok && toast('Zatwierdzono wszystko.'));
 });
 app.addEventListener('keydown', e => {
