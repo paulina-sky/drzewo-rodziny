@@ -412,7 +412,7 @@ const ustatus = u => ({'':'married', rozstanie:'divorced', separated:'divorced'}
 const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu', twins:'Bliźnięta'};
 const FIELDS = {first:'Imię',middle:'Drugie imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Miejsce zamieszkania',tags:'Tagi',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
 // tagi: w drzewie pokazywane jako same emoji
-const TAGS = {artist:['🎨','artystyczna dusza'], musician:['🎹','muzyk'], alcohol:['🍷','problem alkoholowy'], cancer:['🦀','rak'], emigration:['🌎','emigracja'], farmer:['🚜','farmer']};
+const TAGS = {artist:['🎨','artystyczna dusza'], musician:['🎹','muzyk'], alcohol:['🍷','problem alkoholowy'], cancer:['🦀','rak'], emigration:['🌎','emigracja'], farmer:['🚜','farmer'], depression:['🌧️','depresja']};
 const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
 const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
 const REL = {child:'dziecko',parent:'rodzic',partner:'partner(ka)',sibling:'rodzeństwo'};
@@ -425,9 +425,20 @@ function build(withPending){
   DATA.changes.filter(c => c.status==='approved').sort((a,b) => a.aseq-b.aseq).forEach(c => apply(w,c,false));
   if (withPending) DATA.changes.filter(c => c.status==='pending').sort((a,b) => a.ts-b.ts).forEach(c => apply(w,c,true));
   fixGens(w);
+  Object.values(w.people).forEach(legacyHealth);
   return w;
 }
 // Pokolenia wynikają z powiązań: partnerzy w tym samym, dzieci o jedno niżej (ważne po łączeniu osób).
+// Sekcji Zdrowie już nie ma: dawne zaznaczenia stają się tagami, a reszta trafia do „Szczegółów zdrowotnych”.
+const HEALTH_TAG = {alcohol:'alcohol', cancer:'cancer', mental:'depression'};
+function legacyHealth(p){
+  const h = p.health || [];
+  p.tags = [...new Set([...(p.tags || []), ...h.map(x => HEALTH_TAG[x]).filter(Boolean)])];
+  let notes = p.healthNotes || '';
+  const extra = h.filter(x => !HEALTH_TAG[x] && x !== 'other').map(x => HEALTH[x]).concat(p.cancerType ? [p.cancerType] : []);
+  extra.forEach(s => { if (!norm(notes).includes(norm(s))) notes = notes ? s + '. ' + notes : s; });
+  p.healthNotes = notes; p.health = []; p.cancerType = '';
+}
 function fixGens(w){
   const G = id => w.people[id].gen;
   for (let it = 0; it < 60; it++) {
@@ -695,14 +706,12 @@ function personHTML(id){
   const unknown = !p.first && !p.last && !p.maiden;
   const sub = [p.nick && '„'+p.nick+'”', years(p)].filter(Boolean).join('  ·  ');
   const f = (k, v) => v ? `<div class="${pf.has(k)?'pend':''}"><dt>${FIELDS[k]}</dt><dd>${esc(v)}${pf.has(k)?' <span class="pchip">(czeka)</span>':''}</dd></div>` : '';
-  const health = (p.health||[]).map(h => `<span class="chip">${esc(HEALTH[h])}</span>`).join('');
   const facts = [
     f('born', p.born), f('bornPlace', p.bornPlace),
     p.dead ? f('died', p.died || 'nieznana') : '', f('diedPlace', p.diedPlace), f('deathCause', p.deathCause), f('burial', p.burial),
-    f('job', p.job), f('lived', p.lived), f('gender', GENDER[p.gender] && p.gender ? GENDER[p.gender] : ''),
+    f('job', p.job), f('lived', p.lived), f('gender', GENDER[p.gender] && p.gender ? GENDER[p.gender] : ''), f('healthNotes', p.healthNotes),
     twinsOf(w, id).length ? `<div class="${pf.has('twins')?'pend':''}"><dt>${twinsName(twinsOf(w, id).length + 1)}</dt><dd>z: ${esc(twinsOf(w, id).map(x => shortName(w.people[x])).join(', '))}${pf.has('twins')?' <span class="pchip">(czeka)</span>':''}</dd></div>` : '',
   ].join('');
-  const hasHealth = health || p.cancerType || p.healthNotes;
   return `<div class="wrap">
     <div class="section" style="margin-top:4px">
       <h2>Rodzice</h2>
@@ -734,9 +743,6 @@ function personHTML(id){
       <div class="strip">${sibs.map(x => miniCard(w,x,twinsOf(w,id).includes(x) ? twinWord(w,x) : relWord(w,x,'sibling'))).join('')}
       <button class="mini add" data-add="sibling" aria-label="Dodaj rodzeństwo">${ICON.plus}</button></div></div>
     ${facts ? `<div class="section"><h2>Informacje</h2><dl class="facts">${facts}</dl></div>` : ''}
-    ${hasHealth ? `<div class="section"><h2>Zdrowie</h2><dl class="facts">
-        ${health ? `<div class="${pf.has('health')?'pend':''}"><dt>Choroby</dt><dd><span class="chips">${health}</span></dd></div>` : ''}
-        ${f('cancerType', p.cancerType)}${f('healthNotes', p.healthNotes)}</dl></div>` : ''}
     <div class="section"><h2>Notatka ${pf.has('note')?'<span class="pchip">czeka na zatwierdzenie</span>':''}</h2>
       <div class="note ${p.note?'':'empty'} ${pf.has('note')?'pend':''}">${p.note ? esc(p.note) : 'Brak notatki. Znasz jakąś historię? Zapisz ją!'}</div>
       <div style="margin-top:10px"><button class="btn block" data-act="note">${p.note ? ICON.pen : ICON.plus}${p.note ? 'Edytuj notatkę' : 'Dodaj notatkę'}</button></div>
@@ -1203,7 +1209,7 @@ function inboxHTML(){
   const cards = pend.map(c => {
     let body = '';
     if (c.kind === 'edit') {
-      body = Object.entries(c.fields).filter(([k]) => k !== 'photoOrig').map(([k,v]) => {
+      body = Object.entries(c.fields).filter(([k]) => !['photoOrig', 'health', 'cancerType'].includes(k)).map(([k,v]) => {
         const old = A.people[c.pid]?.[k];
         const others = DATA.changes.filter(o => o.id !== c.id && o.status === 'pending' && o.kind === 'edit' && o.pid === c.pid && k in o.fields);
         const conflict = others.length ? `<div class="conflict">Inna propozycja dla tego pola: ${others.map(o => `<b>${esc(fmt(k,o.fields[k]))}</b> (od: ${esc(o.author)})`).join(', ')}. Zatwierdzenie tej zmiany odrzuci tamtą.</div>` : '';
@@ -1307,11 +1313,8 @@ function personForm(p, full){
       + deadField(p, true) + death, true)
     + accordion('Tagi', `<div class="tags" role="group" aria-label="Tagi">${Object.entries(TAGS).map(([k, [e, l]]) =>
         `<label class="tag"><input type="checkbox" name="tags" value="${k}" ${(p.tags||[]).includes(k)?'checked':''}><span>${e} ${l}</span></label>`).join('')}</div>`
-      + txt('job',p.job), true)
-    + accordion('Zdrowie', `<div class="checks">${Object.entries(HEALTH).map(([k,l]) =>
-      `<label class="check"><input type="checkbox" name="health" value="${k}" ${(p.health||[]).includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
-      <div data-canceronly ${(p.health||[]).includes('cancer')?'':'hidden'}>${txt('cancerType',p.cancerType,'Jaki nowotwór i w jakim wieku.','np. rak piersi, ok. 50 lat')}</div>
-      <div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px">${esc(p.healthNotes||'')}</textarea></div>`, true);
+      + txt('job',p.job)
+      + `<div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px" placeholder="np. rak piersi w wieku 50 lat">${esc(p.healthNotes||'')}</textarea></div>`, true);
 }
 const accordion = (title, inner, open, cls = '') => `<details class="acc group ${cls}" ${open ? 'open' : ''}><summary>${title}</summary><div class="accb">${inner}</div></details>`;
 function wireForm(el){
@@ -1319,7 +1322,6 @@ function wireForm(el){
   f.addEventListener('change', () => {
     const g = f.querySelector('[name=gender]:checked'), m = f.querySelector('[data-maidenonly]'); if (m) m.hidden = !(g && g.value === 'K');
     const dead = f.querySelector('[name=dead]'); if (dead) f.querySelector('[data-deadonly]').hidden = !dead.checked;
-    const c = f.querySelector('[name=health][value=cancer]'); if (c) f.querySelector('[data-canceronly]').hidden = !c.checked;
   });
 }
 function readForm(el){
@@ -1327,7 +1329,6 @@ function readForm(el){
   f.querySelectorAll('input[type=text], textarea').forEach(i => o[i.name] = i.value.trim());
   const g = f.querySelector('[name=gender]:checked'); if (g) o.gender = g.value;
   const d = f.querySelector('[name=dead]'); if (d) o.dead = d.checked;
-  if (f.querySelector('[name=health]')) o.health = [...f.querySelectorAll('[name=health]:checked')].map(i => i.value);
   if (f.querySelector('[name=tags]')) o.tags = [...f.querySelectorAll('[name=tags]:checked')].map(i => i.value);
   return o;
 }
@@ -1363,7 +1364,9 @@ function editPerson(){
     (el, close) => {
       wireForm(el);
       el.querySelector('[data-save]').onclick = async () => {
-        const fields = diffFields(p, readForm(el)), tw = twinChange(id, el);
+        const form = readForm(el), fields = diffFields(p, form), tw = twinChange(id, el);
+        // zmiana tagów lub szczegółów zdrowotnych zapisuje je w całości i czyści dawne pola zdrowia
+        if ('tags' in fields || 'healthNotes' in fields) Object.assign(fields, {tags:form.tags, healthNotes:form.healthNotes, health:[], cancerType:''});
         close();
         if (!Object.keys(fields).length && !tw) return toast('Nic się nie zmieniło.');
         if (Object.keys(fields).length && !await commit({kind:'edit', pid:id, fields})) return;
