@@ -1355,7 +1355,7 @@ function twinChange(id, el){
 }
 function editPerson(){
   const id = S.focus, p = W.people[id];
-  openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + accordion('Więcej opcji', `${twinsField(id)}
+  openSheet('Edytuj: ' + shortName(p), personForm(p, true) + accordion('Więcej opcji', `${twinsField(id)}
       ${isAdmin() ? `<div class="opt"><p>Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
       <button type="button" class="btn block" data-mergeperson>Połącz z inną osobą…</button></div>` : ''}
       <div class="opt"><p>Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
@@ -1371,12 +1371,6 @@ function editPerson(){
         if (!Object.keys(fields).length && !tw) return toast('Nic się nie zmieniło.');
         if (Object.keys(fields).length && !await commit({kind:'edit', pid:id, fields})) return;
         if (tw) commit({kind:'union', uid:tw.uid, fields:{twins:tw.groups}});
-      };
-      el.querySelector('[data-addrel]').onclick = async () => {
-        const fields = diffFields(p, readForm(el));
-        close();
-        if (Object.keys(fields).length && !await commit({kind:'edit', pid:id, fields})) return;
-        addRelative();
       };
       el.querySelector('[data-mergeperson]')?.addEventListener('click', () => { close(); mergePick(id); });
       el.querySelector('[data-del]').onclick = async () => {
@@ -1762,7 +1756,6 @@ app.addEventListener('click', e => {
     })();
   }
   if (act === 'note') editNote();
-  if (act === 'addrel') addRelative();
   if (act === 'search') openSearch();
   if (act === 'menu') openMenu();
   if (act === 'inbox') { S.view = S.view === 'inbox' && S.panel !== false ? 'person' : 'inbox'; S.panel = true; save(); render(); }
