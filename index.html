@@ -210,9 +210,24 @@ details.acc[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
 details.acc>summary:focus-visible{outline:3px solid #1d6fd8;outline-offset:2px}
 details.acc .accb{padding:0 16px 4px}
 details.acc[open] .accb{animation:rise .25s var(--ease,ease)}
-details.acc.more>summary{color:var(--muted);font-size:16px;font-weight:650}
-fieldset.twins{border:0;padding:0;margin:0 0 18px}
-fieldset.twins legend{font-weight:650;margin-bottom:4px;padding:0}
+details.acc.more .accb{padding-bottom:16px}
+.opt{margin-bottom:22px}
+.opt:last-child{margin-bottom:0}
+.opt>p{margin:0 0 10px;color:var(--muted)}
+.opt .checks{margin-bottom:0}
+.row2{display:flex;gap:12px}
+.row2>*{flex:1 1 0;min-width:0}
+.check.subtle{min-height:44px;border:0;background:none;padding:4px 0;font-weight:400;color:var(--muted)}
+.check.subtle input{width:20px;height:20px}
+.check.subtle:has(input:checked){background:none;color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.tag{position:relative}
+.tag input{position:absolute;opacity:0;inset:0}
+.tag span{display:inline-flex;align-items:center;min-height:44px;padding:6px 14px;border:2px solid var(--line);border-radius:999px;background:var(--card);cursor:pointer;font-weight:550;transition:background-color .18s,border-color .18s}
+.tag input:checked+span{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-2)}
+.tag input:focus-visible+span{outline:3px solid #1d6fd8;outline-offset:2px}
+.tagchips{justify-content:center;margin-top:10px}
+.tagchips.pend .chip{background:var(--pend-bg)}
 .relpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .relpick button{min-height:96px;border:2px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px}
 .relpick button:hover{border-color:var(--accent)}
@@ -395,11 +410,13 @@ const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
 const USTATUS = {married:['❤️','Małżeństwo'], partner:['🩷','Związek'], divorced:['❌','Rozwód']};
 const ustatus = u => ({'':'married', rozstanie:'divorced', separated:'divorced'})[u.status ?? ''] || u.status;
 const UFIELDS = {status:'Rodzaj związku', wedDate:'Data ślubu', wedPlace:'Miejsce ślubu', endDate:'Data rozwodu', twins:'Bliźnięta'};
-const FIELDS = {first:'Imię',middle:'Drugie imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Gdzie mieszkał(a)',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
+const FIELDS = {first:'Imię',middle:'Drugie imię',last:'Nazwisko',maiden:'Nazwisko panieńskie',nick:'Przydomek / zdrobnienie',gender:'Płeć',born:'Data urodzenia',bornPlace:'Miejsce urodzenia',dead:'Nie żyje',died:'Data śmierci',diedPlace:'Miejsce śmierci',deathCause:'Przyczyna śmierci',burial:'Miejsce pochówku',job:'Zawód',lived:'Miejsce zamieszkania',tags:'Tagi',health:'Zdrowie',cancerType:'Rodzaj nowotworu',healthNotes:'Szczegóły zdrowotne',note:'Notatka',photo:'Zdjęcie'};
+// tagi: w drzewie pokazywane jako same emoji
+const TAGS = {artist:['🎨','artystyczna dusza'], musician:['🎹','muzyk'], alcohol:['🍷','problem alkoholowy'], cancer:['🦀','rak'], emigration:['🌎','emigracja'], farmer:['🚜','farmer']};
 const HEALTH = {cancer:'Nowotwór',heart:'Choroby serca',stroke:'Udar',diabetes:'Cukrzyca',dementia:'Demencja / Alzheimer',alcohol:'Problemy z alkoholem',mental:'Depresja',other:'Inne'};
 const GENDER = {K:'Kobieta',M:'Mężczyzna','':'Nie wiem'};
 const REL = {child:'dziecko',parent:'rodzic',partner:'partner(ka)',sibling:'rodzeństwo'};
-const blank = () => ({first:'',middle:'',last:'',maiden:'',nick:'',gender:'',born:'',bornPlace:'',dead:false,died:'',diedPlace:'',deathCause:'',burial:'',job:'',lived:'',health:[],cancerType:'',healthNotes:'',note:'',photo:''});
+const blank = () => ({tags:[],first:'',middle:'',last:'',maiden:'',nick:'',gender:'',born:'',bornPlace:'',dead:false,died:'',diedPlace:'',deathCause:'',burial:'',job:'',lived:'',health:[],cancerType:'',healthNotes:'',note:'',photo:''});
 
 /* ---------- budowanie drzewa z danych + zmian ---------- */
 function build(withPending){
@@ -696,6 +713,7 @@ function personHTML(id){
       ${p.photo ? `<button class="avbtn" data-act="photoedit" aria-label="Zmień lub wykadruj zdjęcie">${avatar(p,'l')}<span class="avedit" aria-hidden="true">${ICON.pen}</span></button>` : avatar(p,'l')}
       <h1 id="pname">${esc(fullName(p))}</h1>
       ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}
+      ${(p.tags||[]).length ? `<div class="chips tagchips${pf.has('tags')?' pend':''}">${p.tags.filter(x => TAGS[x]).map(x => `<span class="chip">${TAGS[x][0]} ${esc(TAGS[x][1])}</span>`).join('')}</div>` : ''}
       ${isAddPend ? `<div class="badge">Nowa osoba – czeka na zatwierdzenie</div>` : ''}
       ${!isAddPend && pf.size ? `<div class="badge">Twoje zmiany czekają na zatwierdzenie</div>` : ''}
       ${isDelPend ? `<div class="badge del">Zgłoszono do usunięcia</div>` : ''}
@@ -727,7 +745,7 @@ function personHTML(id){
 }
 
 /* ---------- całe drzewo ---------- */
-const CW = 136, CH = 156, GAP = 34, UGAP = 64, RH = 236;
+const CW = 136, CH = 176, GAP = 34, UGAP = 64, RH = 256;
 let TL = null;
 const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
 /* Układ drzewa liczony od nowa przy każdej zmianie:
@@ -1005,6 +1023,7 @@ function treeHTML(){
       <text x="${cx}" y="${y+112}" text-anchor="middle" font-size="16" font-weight="700" fill="#1d2433">${esc(n1)}</text>
       <text x="${cx}" y="${y+131}" text-anchor="middle" font-size="15" font-weight="600" fill="#1d2433">${esc(n2)}</text>
       <text x="${cx}" y="${y+149}" text-anchor="middle" font-size="13.5" fill="#566072">${esc(years(p))}</text>
+      ${(p.tags||[]).length ? `<text x="${cx}" y="${y+168}" text-anchor="middle" font-size="15" aria-hidden="true">${p.tags.filter(x => TAGS[x]).map(x => TAGS[x][0]).join(' ')}</text>` : ''}
       ${pend||fpend ? `<text x="${x+CW-10}" y="${y+22}" text-anchor="end" font-size="17">⏳</text>` : ''}
     </g>`;
   }).join('');
@@ -1167,6 +1186,7 @@ function describe(c, wa){
 }
 function fmt(k, v){
   if (k === 'health') return (v||[]).map(h => HEALTH[h]).join(', ') || '—';
+  if (k === 'tags') return (v||[]).filter(x => TAGS[x]).map(x => TAGS[x].join(' ')).join(', ') || '—';
   if (k === 'gender') return GENDER[v||''];
   if (k === 'dead') return v ? 'Tak' : 'Nie';
   if (k === 'status') return USTATUS[ustatus({status:v})][1];
@@ -1260,27 +1280,38 @@ function openSheet(title, bodyHTML, footHTML, onMount){
   onMount?.(bg, close);
   return {el:bg, close};
 }
-const txt = (k, v, help='', ph='') => `<div class="field"><label for="f-${k}">${FIELDS[k]}</label><input type="text" id="f-${k}" name="${k}" value="${esc(v||'')}" placeholder="${esc(ph)}" autocomplete="off">${help?`<div class="help">${help}</div>`:''}</div>`;
+const txt = (k, v, help='', ph='', label=FIELDS[k]) => `<div class="field"><label for="f-${k}">${label}</label><input type="text" id="f-${k}" name="${k}" value="${esc(v||'')}" placeholder="${esc(ph)}" autocomplete="off">${help?`<div class="help">${help}</div>`:''}</div>`;
 function genderField(v){
   return `<div class="field"><span class="lbl" id="g-l">Płeć</span><div class="choices" role="radiogroup" aria-labelledby="g-l">${Object.entries(GENDER).filter(([k]) => k).map(([k,l]) =>
     `<label class="choice"><input type="radio" name="gender" value="${k}" ${(v||'')===k?'checked':''}><span>${l}</span></label>`).join('')}</div></div>`;
 }
-function deadField(p){
-  return `<label class="check" style="margin-bottom:14px"><input type="checkbox" name="dead" ${p.dead?'checked':''}> Ta osoba nie żyje</label>`;
+function deadField(p, subtle){
+  return `<label class="check${subtle ? ' subtle' : ''}" style="margin-bottom:14px"><input type="checkbox" name="dead" ${p.dead?'checked':''}> Ta osoba nie żyje</label>`;
 }
+const row2 = (a, b) => `<div class="row2">${a}${b}</div>`;
 function personForm(p, full){
-  const dateHelp = 'Wpisz, co wiesz – np. 12.05.1946, „1946” albo „ok. 1946”.';
-  // w edycji każda sekcja ma tytuł i da się ją zwinąć; w dodawaniu zwykłe grupy
-  const sec = (title, inner) => full ? accordion(title, inner, true) : `<div class="group">${inner}</div>`;
-  let h = sec('Podstawowe dane', `${txt('first',p.first)}${full?txt('middle',p.middle):''}${txt('last',p.last)}${genderField(p.gender)}<div data-maidenonly ${p.gender==='K'?'':'hidden'}>${txt('maiden',p.maiden)}</div>`)
-    + sec(full ? 'Urodzenie i śmierć' : '', `${txt('born',p.born,dateHelp,'np. 1946')}${full?txt('bornPlace',p.bornPlace,'','np. Poznań'):''}${deadField(p)}
-      <div data-deadonly ${p.dead?'':'hidden'}>${txt('died',p.died,'','np. 2004')}${full?txt('diedPlace',p.diedPlace)+txt('deathCause',p.deathCause)+txt('burial',p.burial,'Cmentarz, kwatera, rząd.'):''}</div>`);
-  if (full) h += sec('Życie', `${txt('nick',p.nick,'Jak mówiła na nią/niego rodzina.')}${txt('job',p.job)}${txt('lived',p.lived)}`)
-    + sec('Zdrowie', `<div class="checks">${Object.entries(HEALTH).map(([k,l]) =>
+  const maiden = `<div data-maidenonly ${p.gender==='K'?'':'hidden'}>${txt('maiden', p.maiden, '', '', full ? 'Panieńskie' : FIELDS.maiden)}</div>`;
+  const death = `<div data-deadonly ${p.dead?'':'hidden'}>${full ? row2(txt('died',p.died,'','np. 2004'), txt('diedPlace',p.diedPlace)) + txt('deathCause',p.deathCause) + txt('burial',p.burial,'Cmentarz, kwatera, rząd.') : txt('died',p.died,'','np. 2004')}</div>`;
+  if (!full) {   // dodawanie nowej osoby: tylko najważniejsze
+    return `<div class="group">${txt('first',p.first)}${txt('last',p.last)}${genderField(p.gender)}${maiden}</div>
+      <div class="group">${txt('born',p.born,'Wpisz, co wiesz – np. 12.05.1946, „1946” albo „ok. 1946”.','np. 1946')}${deadField(p)}${death}</div>`;
+  }
+  // edycja: sekcje z tytułami, zwijane
+  return accordion('Podstawowe dane',
+      row2(txt('first',p.first), txt('middle',p.middle))
+      + row2(txt('last',p.last), maiden)
+      + txt('nick',p.nick,'Jak mówiła na nią/niego rodzina.')
+      + genderField(p.gender)
+      + txt('lived',p.lived,'','np. Poznań')
+      + row2(txt('born',p.born,'','np. 1946'), txt('bornPlace',p.bornPlace,'','np. Gniezno'))
+      + deadField(p, true) + death, true)
+    + accordion('Tagi', `<div class="tags" role="group" aria-label="Tagi">${Object.entries(TAGS).map(([k, [e, l]]) =>
+        `<label class="tag"><input type="checkbox" name="tags" value="${k}" ${(p.tags||[]).includes(k)?'checked':''}><span>${e} ${l}</span></label>`).join('')}</div>`
+      + txt('job',p.job), true)
+    + accordion('Zdrowie', `<div class="checks">${Object.entries(HEALTH).map(([k,l]) =>
       `<label class="check"><input type="checkbox" name="health" value="${k}" ${(p.health||[]).includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
       <div data-canceronly ${(p.health||[]).includes('cancer')?'':'hidden'}>${txt('cancerType',p.cancerType,'Jaki nowotwór i w jakim wieku.','np. rak piersi, ok. 50 lat')}</div>
-      <div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px">${esc(p.healthNotes||'')}</textarea></div>`);
-  return h;
+      <div class="field"><label for="f-healthNotes">${FIELDS.healthNotes}</label><textarea id="f-healthNotes" name="healthNotes" style="min-height:90px">${esc(p.healthNotes||'')}</textarea></div>`, true);
 }
 const accordion = (title, inner, open, cls = '') => `<details class="acc group ${cls}" ${open ? 'open' : ''}><summary>${title}</summary><div class="accb">${inner}</div></details>`;
 function wireForm(el){
@@ -1297,6 +1328,7 @@ function readForm(el){
   const g = f.querySelector('[name=gender]:checked'); if (g) o.gender = g.value;
   const d = f.querySelector('[name=dead]'); if (d) o.dead = d.checked;
   if (f.querySelector('[name=health]')) o.health = [...f.querySelectorAll('[name=health]:checked')].map(i => i.value);
+  if (f.querySelector('[name=tags]')) o.tags = [...f.querySelectorAll('[name=tags]:checked')].map(i => i.value);
   return o;
 }
 function diffFields(p, o){
@@ -1308,9 +1340,8 @@ function diffFields(p, o){
 function twinsField(id){
   const sibs = siblingsOf(W, id); if (!sibs.length) return '';
   const cur = twinsOf(W, id);
-  return `<fieldset class="twins"><legend>Bliźnięta</legend>
-    <p style="margin:0 0 10px;color:var(--muted);font-size:14px">Zaznacz rodzeństwo urodzone razem z tą osobą.</p>
-    <div class="checks">${sibs.map(s => `<label class="check"><input type="checkbox" name="twin" value="${s}" ${cur.includes(s) ? 'checked' : ''}> ${esc(shortName(W.people[s]))}</label>`).join('')}</div></fieldset>`;
+  return `<div class="opt"><p id="tw-l">Zaznacz rodzeństwo urodzone razem z tą osobą jako bliźnięta.</p>
+    <div class="checks" role="group" aria-labelledby="tw-l">${sibs.map(s => `<label class="check"><input type="checkbox" name="twin" value="${s}" ${cur.includes(s) ? 'checked' : ''}> ${esc(shortName(W.people[s]))}</label>`).join('')}</div></div>`;
 }
 // nowe grupy bliźniąt przy związku rodziców albo null, gdy nic się nie zmieniło
 function twinChange(id, el){
@@ -1324,10 +1355,10 @@ function twinChange(id, el){
 function editPerson(){
   const id = S.focus, p = W.people[id];
   openSheet('Edytuj: ' + shortName(p), `<button type="button" class="btn block" data-addrel style="margin-bottom:14px">Dodaj krewnego</button>` + personForm(p, true) + accordion('Więcej opcji', `${twinsField(id)}
-      ${isAdmin() ? `<p style="color:var(--muted)">Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
-      <button type="button" class="btn block" data-mergeperson style="margin-bottom:14px">Połącz z inną osobą…</button>` : ''}
-      <p style="color:var(--muted)">Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
-      <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button>`, false, 'more'),
+      ${isAdmin() ? `<div class="opt"><p>Ta sama osoba jest w drzewie dwa razy? Połącz oba wpisy w jeden.</p>
+      <button type="button" class="btn block" data-mergeperson>Połącz z inną osobą…</button></div>` : ''}
+      <div class="opt"><p>Usuń tylko, jeśli ta osoba została dodana przez pomyłkę.</p>
+      <button type="button" class="btn danger block" data-del>Usuń tę osobę z drzewa</button></div>`, false, 'more'),
     `<button class="btn ghost" data-close>Anuluj</button><button class="btn primary" data-save>Zapisz zmiany</button>`,
     (el, close) => {
       wireForm(el);
@@ -1468,7 +1499,7 @@ function dupDialog(o, dups){
       });
   });
 }
-const MERGE_KEYS = ['first','middle','last','maiden','nick','gender','born','bornPlace','dead','died','diedPlace','deathCause','burial','job','lived','health','cancerType','healthNotes','note','photo'];
+const MERGE_KEYS = ['tags','first','middle','last','maiden','nick','gender','born','bornPlace','dead','died','diedPlace','deathCause','burial','job','lived','health','cancerType','healthNotes','note','photo'];
 function mergePick(aId){
   const a = W.people[aId];
   openSheet('Połącz z…', `<p style="margin-top:0">Wybierz osobę, która jest tą samą osobą co <b>${esc(fullName(a))}</b>.</p>
@@ -1492,7 +1523,7 @@ function mergeCompare(aId, bId){
   const auto = {}, pick = [];
   MERGE_KEYS.forEach(k => {
     const va = a[k], vb = b[k];
-    if (k === 'health') auto[k] = [...new Set([...(va || []), ...(vb || [])])];
+    if (k === 'health' || k === 'tags') auto[k] = [...new Set([...(va || []), ...(vb || [])])];
     else if (k === 'dead') auto[k] = !!(va || vb);
     else if (empty(vb) || JSON.stringify(va) === JSON.stringify(vb)) auto[k] = va;
     else if (empty(va)) auto[k] = vb;
