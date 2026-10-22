@@ -1116,11 +1116,15 @@ function zoomTo(z, cx, cy, sx, sy){
   const pd = padOf(box);
   box.scrollLeft = pd.x + cx * S.zoom - sx; box.scrollTop = pd.y + cy * S.zoom - sy;
 }
+// Środkowanie widoku, osobno w poziomie i w pionie: jeśli całe drzewo mieści się w oknie – na środek drzewa,
+// jeśli nie – na wybraną osobę.
 function centerOn(id, smooth){
-  const box = document.querySelector('.treebox'); if (!box || !TL || !TL.pos[id]) return;
-  const z = S.zoom, p = TL.pos[id];
-  const pd = padOf(box);
-  box.scrollTo({left:pd.x + (p.x + CW/2) * z - box.clientWidth/2, top:pd.y + (p.y + CH/2) * z - box.clientHeight/2, behavior:smooth && !reduceMotion() ? 'smooth' : 'auto'});
+  const box = document.querySelector('.treebox'); if (!box || !TL) return;
+  const z = S.zoom, p = TL.pos[id], pd = padOf(box);
+  const ps = Object.values(TL.pos), x0 = Math.min(...ps.map(q => q.x)), x1 = Math.max(...ps.map(q => q.x)) + CW, y0 = Math.min(...ps.map(q => q.y)), y1 = Math.max(...ps.map(q => q.y)) + CH;
+  const fitX = (x1 - x0) * z <= box.clientWidth, fitY = (y1 - y0) * z <= box.clientHeight;
+  const cx = fitX || !p ? (x0 + x1) / 2 : p.x + CW / 2, cy = fitY || !p ? (y0 + y1) / 2 : p.y + CH / 2;
+  box.scrollTo({left:pd.x + cx * z - box.clientWidth / 2, top:pd.y + cy * z - box.clientHeight / 2, behavior:smooth && !reduceMotion() ? 'smooth' : 'auto'});
 }
 
 /* ---------- zmiany: zapis, cofanie, zatwierdzanie ---------- */
