@@ -163,7 +163,7 @@ dl.facts .pend{background:var(--pend-bg)}
 .treebox.drag{cursor:grabbing}
 .treewrap{position:relative;height:100%}
 .legend{position:absolute;left:12px;bottom:12px;z-index:5;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:14px;display:none;gap:12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
-svg.tree{transform-origin:0 0}
+svg.tree{transform-origin:0 0;display:block}
 svg.tree text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 svg.tree .card{cursor:pointer}
 svg.tree .card:hover rect.bg{stroke:var(--accent);stroke-width:2}
@@ -1038,8 +1038,22 @@ function treeHTML(){
     <svg class="tree" width="${L.width*z}" height="${L.height*z}" viewBox="0 0 ${L.width} ${L.height}" role="group">${lines}${marks}${cards}</svg></div>
     <div class="legend"><span><i class="lg"></i>❤️ małżeństwo</span><span><i class="lg"></i>🩷 związek</span><span><i class="lg dot"></i>❌ rozwód</span><span>⏳ czeka na zatwierdzenie</span></div></div>`;
 }
+// Wokół drzewa jest pusty margines o połowie rozmiaru okna, żeby każdą osobę – także skrajną – dało się ustawić na środku.
+function applyPad(box){
+  box._pad = {x:Math.round(box.clientWidth / 2), y:Math.round(box.clientHeight / 2)};
+  box.querySelector('svg').style.margin = `${box._pad.y}px ${box._pad.x}px`;
+  return box._pad;
+}
+const padOf = box => box._pad || applyPad(box);
+window.addEventListener('resize', () => {
+  const box = document.querySelector('.treebox'); if (!box || !box._pad || !TL) return;
+  // margines = połowa poprzedniego okna, więc dotychczasowy środek widoku to po prostu pozycja przewinięcia
+  const cx = box.scrollLeft / S.zoom, cy = box.scrollTop / S.zoom;
+  applyPad(box); zoomTo(S.zoom, cx, cy, box.clientWidth / 2, box.clientHeight / 2);
+});
 function setupTree(prev){
   const box = document.querySelector('.treebox'); if (!box) return;
+  applyPad(box);
   if (prev && (prev.l || prev.t)) { box.scrollLeft = prev.l; box.scrollTop = prev.t; }
   else centerOn(S.focus);
   let drag = null;
@@ -1063,7 +1077,8 @@ function setupTree(prev){
   box.addEventListener('touchstart', e => {
     if (e.touches.length !== 2) return;
     const m = mid(e.touches);
-    pinch = {d0:dist(e.touches), m0:m, m, k:1, z0:S.zoom, ox:box.scrollLeft + m.x, oy:box.scrollTop + m.y};
+    const pd = padOf(box);
+    pinch = {d0:dist(e.touches), m0:m, m, k:1, z0:S.zoom, ox:box.scrollLeft + m.x - pd.x, oy:box.scrollTop + m.y - pd.y};
     svg.style.transformOrigin = `${pinch.ox}px ${pinch.oy}px`;
   }, {passive:true});
   box.addEventListener('touchmove', e => {
@@ -1088,7 +1103,8 @@ function setupTree(prev){
     if (!e.ctrlKey) return;
     e.preventDefault();
     const r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-    zoomTo(S.zoom * Math.exp(-e.deltaY / 100), (box.scrollLeft + mx) / S.zoom, (box.scrollTop + my) / S.zoom, mx, my);
+    const pd = padOf(box);
+    zoomTo(S.zoom * Math.exp(-e.deltaY / 100), (box.scrollLeft + mx - pd.x) / S.zoom, (box.scrollTop + my - pd.y) / S.zoom, mx, my);
   }, {passive:false});
 }
 const clampZoom = z => Math.min(2, Math.max(0.25, z));
@@ -1097,12 +1113,14 @@ function zoomTo(z, cx, cy, sx, sy){
   const box = document.querySelector('.treebox'), svg = box.querySelector('svg');
   S.zoom = clampZoom(z); save();
   svg.setAttribute('width', TL.width * S.zoom); svg.setAttribute('height', TL.height * S.zoom);
-  box.scrollLeft = cx * S.zoom - sx; box.scrollTop = cy * S.zoom - sy;
+  const pd = padOf(box);
+  box.scrollLeft = pd.x + cx * S.zoom - sx; box.scrollTop = pd.y + cy * S.zoom - sy;
 }
 function centerOn(id, smooth){
   const box = document.querySelector('.treebox'); if (!box || !TL || !TL.pos[id]) return;
   const z = S.zoom, p = TL.pos[id];
-  box.scrollTo({left:(p.x + CW/2) * z - box.clientWidth/2, top:(p.y + CH/2) * z - box.clientHeight/2, behavior:smooth && !reduceMotion() ? 'smooth' : 'auto'});
+  const pd = padOf(box);
+  box.scrollTo({left:pd.x + (p.x + CW/2) * z - box.clientWidth/2, top:pd.y + (p.y + CH/2) * z - box.clientHeight/2, behavior:smooth && !reduceMotion() ? 'smooth' : 'auto'});
 }
 
 /* ---------- zmiany: zapis, cofanie, zatwierdzanie ---------- */
@@ -1759,7 +1777,7 @@ app.addEventListener('click', e => {
   if (act === 'search') openSearch();
   if (act === 'menu') openMenu();
   if (act === 'inbox') { S.view = S.view === 'inbox' && S.panel !== false ? 'person' : 'inbox'; S.panel = true; save(); render(); }
-  if (act === 'closepanel') { S.panel = false; save(); render(); }
+  if (act === 'closepanel') { S.panel = false; save(); render(); centerOn(S.focus); }
   if (act === 'approveall') Promise.all([...document.querySelectorAll('.chg')].map(leave)).then(() => adminAct(() => DATA.changes.filter(c => c.status === 'pending').sort((a,b) => a.ts-b.ts).forEach(c => approve(c.id)))).then(ok => ok && toast('Zatwierdzono wszystko.'));
 });
 app.addEventListener('keydown', e => {
