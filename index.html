@@ -999,6 +999,22 @@ function layout(w){
     gens.slice(0, -1).reverse().forEach(g => place(g, wantUp(g)));
   }
   gens.slice(1).forEach(g => place(g, wantDown(g)));
+  // Wyprostowanie: rodzina, której rodziców nie ma w drzewie (np. świeżo dodani przodkowie), przesuwa się
+  // nad swoje dzieci, jeśli obok jest wolne miejsce – żeby linia do dziecka szła prosto w dół.
+  for (let pass = 0; pass < 2; pass++) gens.slice(0, -1).reverse().forEach(g => {
+    const r = rows[g];
+    r.forEach((un, i) => {
+      if (un.members.some(m => parentU[m] && partnersIn(parentU[m], g - 1).length)) return;
+      const d = unionsOf(un).map(u => {
+        const ks = u.children.filter(c => P[c] && P[c].gen === g + 1);
+        return ks.length && partnersIn(u, g).length ? avg(ks.map(cxOf)) - anchorX(u, g) : null;
+      }).filter(v => v !== null);
+      if (!d.length) return;
+      const lo = i > 0 ? X[r[i - 1].id] + r[i - 1].w + UGAP : -Infinity;
+      const hi = i < r.length - 1 ? X[r[i + 1].id] - UGAP - un.w : Infinity;
+      X[un.id] = Math.min(hi, Math.max(lo, X[un.id] + avg(d)));
+    });
+  });
 
   const pos = {};
   let minX = Infinity, maxX = -Infinity;
