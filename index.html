@@ -175,6 +175,10 @@ svg.tree .hl.st{stroke-width:7}
 svg.tree .hl.wk{stroke-width:4.5;stroke-opacity:.55}
 svg.tree.hl-on .base{opacity:.3}
 svg.tree .card.dim{opacity:.45}
+svg.tree .kin rect{fill:#e3efe8;stroke:#2e6a4f;stroke-width:1.2}
+svg.tree .kin text{fill:#24543f}
+svg.tree .kin.st rect{fill:#2e6a4f}
+svg.tree .kin.st text{fill:#fff}
 .hlbadge{position:absolute;left:12px;top:12px;z-index:6;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:12px;padding:6px 8px 6px 12px;font-size:14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .hlbadge button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 10px;font:inherit;cursor:pointer}
 
@@ -817,7 +821,46 @@ function bloodLine(w, id){
     return seen; };
   const anc = walk([id], up), desc = walk([id], down);
   const blood = walk([...anc], down);   // przodkowie i wszyscy ich potomkowie = krewni
-  return {anc, desc, blood};
+  return {anc, desc, blood, up};
+}
+// Nazwa pokrewieństwa: kim osoba `r` jest dla zaznaczonej osoby `id` (tylko krewni).
+function kinName(w, id, r, BL){
+  if (r === id) return '';
+  const P = w.people, g = x => P[x]?.gender, up = BL.up;
+  const climb = s => { const d = new Map([[s, 0]]), prev = new Map(), q = [s];
+    while (q.length) { const x = q.shift(); (up.get(x) || []).forEach(y => { if (!d.has(y)) { d.set(y, d.get(x) + 1); prev.set(y, x); q.push(y); } }); }
+    return {d, prev}; };
+  const A = climb(id), B = climb(r);
+  let best = null;
+  A.d.forEach((a, c) => { if (!B.d.has(c)) return; const b = B.d.get(c);
+    if (!best || a + b < best.a + best.b || (a + b === best.a + best.b && a < best.a)) best = {c, a, b}; });
+  if (!best) return '';
+  const {c, a, b} = best;
+  const f = (m, k, n) => g(r) === 'M' ? m : g(r) === 'K' ? k : n;
+  const pra = n => 'pra'.repeat(Math.max(0, n));
+  const down = (prev, n) => { let x = c; for (let i = 0; i < n; i++) x = prev.get(x); return x; };   // n kroków od wspólnego przodka w dół
+  if (b === 0) return a === 1 ? f('ojciec', 'matka', 'rodzic') : a <= 5 ? pra(a - 2) + f('dziadek', 'babcia', 'dziadek/babcia') : `przodek (${a}. pokolenie)`;
+  if (a === 0) return b === 1 ? f('syn', 'córka', 'dziecko') : b <= 5 ? pra(b - 2) + f('wnuk', 'wnuczka', 'wnuk/wnuczka') : `potomek (${b}. pokolenie)`;
+  if (a === 1 && b === 1) {
+    const pu = x => w.unions.find(u => u.children.includes(x));
+    const half = pu(id) !== pu(r) && (pu(id)?.partners.length === 2 || pu(r)?.partners.length === 2);
+    return (half ? f('przyrodni ', 'przyrodnia ', 'przyrodnie ') : '') + f('brat', 'siostra', 'rodzeństwo');
+  }
+  if (a === 1) {   // dzieci rodzeństwa i dalej
+    const sib = down(B.prev, 1);
+    if (b === 2) return g(sib) === 'K' ? f('siostrzeniec', 'siostrzenica', 'dziecko siostry') : f('bratanek', 'bratanica', 'dziecko brata');
+    return `${pra(b - 3)}${f('wnuk', 'wnuczka', 'wnuk')} ${g(sib) === 'K' ? 'siostry' : 'brata'}`;
+  }
+  if (b === 1) {   // rodzeństwo rodziców, dziadków…
+    const via = down(A.prev, 1);   // przodek zaznaczonej osoby, którego rodzeństwem jest r
+    if (a === 2) return g(r) === 'K' ? 'ciotka' : g(via) === 'K' ? 'wuj' : 'stryj';
+    const rel = (g(via) === 'K' ? pra(a - 3) + 'babci' : pra(a - 3) + 'dziadka');
+    return `${f('brat', 'siostra', 'rodzeństwo')} ${rel}`;
+  }
+  if (a === b) return a === 2 ? f('kuzyn', 'kuzynka', 'kuzyn/ka') : `${f('kuzyn', 'kuzynka', 'kuzyn/ka')} ${a - 1}. stopnia`;
+  if (a === 2 && b === 3) { const par = down(B.prev, 2); return `${f('syn', 'córka', 'dziecko')} ${g(par) === 'K' ? 'kuzynki' : 'kuzyna'}`; }
+  if (a === 3 && b === 2) { const par = down(A.prev, 2); return `${f('kuzyn', 'kuzynka', 'kuzyn/ka')} ${g(par) === 'K' ? 'mamy' : 'taty'}`; }
+  return f('krewny', 'krewna', 'krewny/a');
 }
 const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
 /* Układ drzewa liczony od nowa przy każdej zmianie:
@@ -1131,6 +1174,9 @@ function treeHTML(){
     const pic = src
       ? `<clipPath id="c-${p.id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><image href="${src}" x="${cx-r}" y="${cy-r}" width="${2*r}" height="${2*r}" clip-path="url(#c-${p.id})" preserveAspectRatio="xMidYMid slice" ${p.dead?'style="filter:grayscale(.35)"':''}/>`
       : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#efeae0"/><text x="${cx}" y="${cy+9}" text-anchor="middle" font-size="26" font-weight="700" fill="#566072">${esc(initials(p))}</text>`;
+    const kin = BL && BL.blood.has(p.id) ? kinName(w, HL, p.id, BL) : '';
+    const kinW = kin.length * 8 + 22, kinSt = kin && (BL.anc.has(p.id) || BL.desc.has(p.id));
+    const pill = kin ? `<g class="kin${kinSt ? ' st' : ''}" aria-hidden="true"><rect x="${cx - kinW/2}" y="${y - 14}" width="${kinW}" height="27" rx="13.5"/><text x="${cx}" y="${y + 5}" text-anchor="middle" font-size="14" font-weight="700">${esc(kin)}</text></g>` : '';
     return `<g class="card${on ? ' on' : ''}${BL && !BL.blood.has(p.id) ? ' dim' : ''}" role="button" tabindex="0" data-go="${p.id}" aria-label="${esc(fullName(p) + (years(p)?', '+years(p):''))}">
       <rect class="bg" x="${x}" y="${y}" width="${CW}" height="${CH}" rx="16" fill="${pend?'#fff2d6':'#fff'}" stroke="${on?'#2e6a4f':pend||fpend?'#e0a84a':'#d6cfc2'}" stroke-width="${on?4:pend||fpend?2.5:1.5}" ${pend||del?'stroke-dasharray="8 5"':''}/>
       ${pic}<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-width="3"/>
@@ -1139,6 +1185,7 @@ function treeHTML(){
       ${dl.map((s, i) => `<text x="${cx}" y="${y + 150 + i * 17}" text-anchor="middle" font-size="13.5" fill="#566072">${esc(s)}</text>`).join('')}
       ${(p.tags||[]).length ? `<text x="${cx}" y="${y + (dl.length > 1 ? 187 : 171)}" text-anchor="middle" font-size="15" aria-hidden="true">${p.tags.filter(x => TAGS[x]).map(x => TAGS[x][0]).join(' ')}</text>` : ''}
       ${pend||fpend ? `<text x="${x+CW-10}" y="${y+22}" text-anchor="end" font-size="17">⏳</text>` : ''}
+      ${pill}
     </g>`;
   }).join('');
   const z = S.zoom;
