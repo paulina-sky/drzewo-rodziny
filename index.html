@@ -424,6 +424,7 @@ function build(withPending){
   for (const [id,p] of Object.entries(DATA.base.people)) w.people[id] = Object.assign(blank(), clone(p));
   DATA.changes.filter(c => c.status==='approved').sort((a,b) => a.aseq-b.aseq).forEach(c => apply(w,c,false));
   if (withPending) DATA.changes.filter(c => c.status==='pending').sort((a,b) => a.ts-b.ts).forEach(c => apply(w,c,true));
+  dedupeUnions(w);
   fixGens(w);
   Object.values(w.people).forEach(legacyHealth);
   return w;
@@ -438,6 +439,26 @@ function legacyHealth(p){
   const extra = h.filter(x => !HEALTH_TAG[x] && x !== 'other').map(x => HEALTH[x]).concat(p.cancerType ? [p.cancerType] : []);
   extra.forEach(s => { if (!norm(notes).includes(norm(s))) notes = notes ? s + '. ' + notes : s; });
   p.healthNotes = notes; p.health = []; p.cancerType = '';
+}
+// Ta sama para zapisana dwa razy (np. po dołączeniu rodzica do dzieci) – łączymy w jeden związek:
+// zostaje ostatnio edytowany (rodzaj związku, daty), dzieci i bliźnięta z obu.
+function dedupeUnions(w){
+  const pairs = {};
+  w.unions.forEach(u => {
+    if (u.partners.length !== 2) return;
+    const k = u.partners.slice().sort().join('|');
+    (pairs[k] ||= []).push(u);
+  });
+  Object.values(pairs).filter(g => g.length > 1).forEach(g => {
+    const keep = g.slice().sort((a, b) => (b._edited || 0) - (a._edited || 0))[0];
+    g.filter(u => u !== keep).forEach(u => {
+      u.children.forEach(c => !keep.children.includes(c) && keep.children.push(c));
+      if (u.twins) keep.twins = [...(keep.twins || []), ...u.twins];
+      if (w.flags.unions.has(u.id)) w.flags.unions.add(keep.id);
+      u.partners = []; u.children = [];
+    });
+  });
+  cleanUnions(w);
 }
 function fixGens(w){
   const G = id => w.people[id].gen;
@@ -508,7 +529,9 @@ function apply(w, c, pending){
       if (!u.children.includes(p.id)) { detach(p.id); u.children.push(p.id); }
     } else if (t === 'parent') {
       const u = U.find(x => x.children.includes(of.id));
+      const pair = u && u.partners.length === 1 && U.find(x => x !== u && x.partners.length === 2 && x.partners.includes(p.id) && x.partners.includes(u.partners[0]));
       if (!u) U.push({id:nu, partners:[p.id], children:[of.id]});
+      else if (pair) { u.children.forEach(k => !pair.children.includes(k) && pair.children.push(k)); u.children = []; u.partners = []; }
       else if (!u.partners.includes(p.id) && u.partners.length < 2) u.partners.push(p.id);
     } else if (t === 'partner') {
       if (!U.some(u => u.partners.includes(p.id) && u.partners.includes(of.id))) {
@@ -555,6 +578,7 @@ function apply(w, c, pending){
   } else if (c.kind === 'union') {
     const u = w.unions.find(x => x.id === c.uid); if (!u) return;
     Object.assign(u, clone(c.fields));
+    u._edited = (w.useq = (w.useq || 0) + 1);
     if (pending && Object.keys(c.fields).some(k => k !== 'twins')) w.flags.unions.add(c.uid);
     if (pending && c.fields.twins) c.fields.twins.flat().forEach(id => (w.flags.fields[id] ||= new Set()).add('twins'));
   } else if (c.kind === 'delete') {
@@ -583,7 +607,8 @@ const twinsName = n => n >= 3 ? 'Trojaczki' : 'Bliźnięta';
 const matchName = (p, q) => { const hay = norm([p.first, p.middle, p.last, p.maiden, p.nick].filter(Boolean).join(' ')); return norm(q).split(/\s+/).filter(Boolean).every(w => hay.includes(w)); };
 const sameName = (a, b) => {
   const f = norm(a.first); if (!f || f !== norm(b.first)) return false;
-  const la = [a.last, a.maiden].filter(Boolean).map(norm), lb = [b.last, b.maiden].filter(Boolean).map(norm);
+  const sur = s => norm(s).replace(/(sk|ck|dzk)a$/, '$1i');
+  const la = [a.last, a.maiden].filter(Boolean).map(sur), lb = [b.last, b.maiden].filter(Boolean).map(sur);
   return la.some(x => lb.includes(x));
 };
 // krótki opis, po którym rodzina rozpozna osobę: „rodzice: Janusz Lemański i Hanna Lemańska”
