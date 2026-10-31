@@ -788,7 +788,13 @@ function personHTML(id){
 }
 
 /* ---------- całe drzewo ---------- */
-const CW = 136, CH = 176, GAP = 34, UGAP = 64, RH = 256;
+const CW = 136, CH = 194, GAP = 34, UGAP = 64, RH = 274;
+// daty na karcie: w jednym wierszu, jeśli się zmieszczą, inaczej urodzenie i śmierć w osobnych wierszach
+function dateLines(p){
+  const one = years(p);
+  if (one.length <= 17) return one ? [one] : [];
+  return [p.born && 'ur. ' + p.born, p.dead && (p.died ? '† ' + p.died : '†')].filter(Boolean);
+}
 let TL = null;
 const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
 /* Układ drzewa liczony od nowa przy każdej zmianie:
@@ -1052,6 +1058,7 @@ function treeHTML(){
     lines += `<path data-u="${u.id}" d="M${ax} ${ay+ (ps.length===2?12:0)} V${by} M${Math.min(...ends)} ${by} H${Math.max(...ends)} ${drops}" fill="none" stroke="#5c5548" stroke-width="2.5" stroke-linejoin="round"/>`;
   });
   const cards = Object.values(w.people).map(p => {
+    const dl = dateLines(p);
     const {x,y} = P[p.id];
     const pend = w.flags.add.has(p.id), fpend = !!w.flags.fields[p.id], del = w.flags.del.has(p.id), on = p.id === S.focus;
     const r = 40, cx = x + CW/2, cy = y + 46;
@@ -1065,8 +1072,8 @@ function treeHTML(){
       ${pic}<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-width="3"/>
       <text x="${cx}" y="${y+112}" text-anchor="middle" font-size="16" font-weight="700" fill="#1d2433">${esc(n1)}</text>
       <text x="${cx}" y="${y+131}" text-anchor="middle" font-size="15" font-weight="600" fill="#1d2433">${esc(n2)}</text>
-      <text x="${cx}" y="${y+149}" text-anchor="middle" font-size="13.5" fill="#566072">${esc(years(p))}</text>
-      ${(p.tags||[]).length ? `<text x="${cx}" y="${y+168}" text-anchor="middle" font-size="15" aria-hidden="true">${p.tags.filter(x => TAGS[x]).map(x => TAGS[x][0]).join(' ')}</text>` : ''}
+      ${dl.map((s, i) => `<text x="${cx}" y="${y + 150 + i * 17}" text-anchor="middle" font-size="13.5" fill="#566072">${esc(s)}</text>`).join('')}
+      ${(p.tags||[]).length ? `<text x="${cx}" y="${y + (dl.length > 1 ? 187 : 171)}" text-anchor="middle" font-size="15" aria-hidden="true">${p.tags.filter(x => TAGS[x]).map(x => TAGS[x][0]).join(' ')}</text>` : ''}
       ${pend||fpend ? `<text x="${x+CW-10}" y="${y+22}" text-anchor="end" font-size="17">⏳</text>` : ''}
     </g>`;
   }).join('');
