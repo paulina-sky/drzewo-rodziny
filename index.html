@@ -1888,7 +1888,13 @@ function openSearch(){
         r.innerHTML = hits.length ? hits.map(p => miniCard(W, p.id)).join('') : '<p>Nikogo nie znaleziono.</p>';
       };
       q.addEventListener('input', draw); draw();
-      r.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) { close(); go(b.dataset.go, 'person'); } });
+      r.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return;
+        close();
+        // wybrana osoba: zaznaczona w drzewie razem z linią krwi i pokazana na środku
+        const id = b.dataset.go; HL = id;
+        go(id, wide.matches ? 'person' : 'tree');
+        requestAnimationFrame(() => centerOn(id, true));
+      });
     });
 }
 function openMenu(){
