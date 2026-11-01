@@ -101,7 +101,7 @@ nav.tabs .count{position:absolute;top:6px;left:calc(50% + 8px)}
 .av img{width:100%;height:100%;object-fit:cover;display:block}
 .av.s{width:48px;height:48px;font-size:17px}
 .av.l{width:132px;height:132px;font-size:40px}
-.av.dead{filter:grayscale(.35)}
+.av.dead img{filter:grayscale(1)}
 
 .hero{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;text-align:center;margin-top:14px}
 .hero.pending{border:2px dashed var(--pend-line)}
@@ -1172,7 +1172,7 @@ function treeHTML(){
     const n1 = p.first || (p.last || p.maiden ? '?' : 'Nieznana'), n2 = p.last || p.maiden || (p.first ? '' : 'osoba');
     const src = ph(p.photo);
     const pic = src
-      ? `<clipPath id="c-${p.id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><image href="${src}" x="${cx-r}" y="${cy-r}" width="${2*r}" height="${2*r}" clip-path="url(#c-${p.id})" preserveAspectRatio="xMidYMid slice" ${p.dead?'style="filter:grayscale(.35)"':''}/>`
+      ? `<clipPath id="c-${p.id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><image href="${src}" x="${cx-r}" y="${cy-r}" width="${2*r}" height="${2*r}" clip-path="url(#c-${p.id})" preserveAspectRatio="xMidYMid slice" ${p.dead?'style="filter:grayscale(1)"':''}/>`
       : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#efeae0"/><text x="${cx}" y="${cy+9}" text-anchor="middle" font-size="26" font-weight="700" fill="#566072">${esc(initials(p))}</text>`;
     const kin = BL && BL.blood.has(p.id) ? kinName(w, HL, p.id, BL) : '';
     const kinW = kin.length * 8 + 22, kinSt = kin && (BL.anc.has(p.id) || BL.desc.has(p.id));
